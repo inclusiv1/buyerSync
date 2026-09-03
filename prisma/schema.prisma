@@ -1,0 +1,291 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String                  @id @default(uuid())
+  name                String
+  email               String                  @unique
+  phone               String?
+  passwordHash        String
+  role                String // 'primary_buyer', 'co_buyer', 'agent'
+  profileSlug         String                  @unique
+  avatar              String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  memberships         GroupMembership[]
+  notes               Note[]
+  weights             UserItemWeight[]
+  itemStatuses        PropertyItemStatus[]
+  invitedBy           Invitation[]            @relation("Inviter")
+  decisionSubmissions DecisionSubmission[]
+  criterionRatings    CriterionRating[]
+  inspections         WalkthroughInspection[]
+  agentComments       AgentComment[]
+}
+
+model BuyerGroup {
+  id               String              @id @default(uuid())
+  name             String
+  primaryBuyerId   String
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  memberships      GroupMembership[]
+  invitations      Invitation[]
+  properties       Property[]
+  checklistItems   ChecklistItem[]
+  searchCriteria   SearchCriteria?
+  decisionCriteria DecisionCriterion[]
+
+  @@unique([primaryBuyerId, name])
+}
+
+model GroupMembership {
+  id          String     @id @default(uuid())
+  groupId     String
+  userId      String
+  role        String // 'buyer', 'co_buyer', 'agent'
+  permissions String? // JSON or comma-separated
+  invitedBy   String?
+  status      String     @default("pending") // 'pending', 'accepted'
+  group       BuyerGroup @relation(fields: [groupId], references: [id])
+  user        User       @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+}
+
+model Invitation {
+  id              String     @id @default(uuid())
+  groupId         String
+  invitedEmail    String
+  invitedPhone    String?
+  invitedRole     String     @default("co_buyer")
+  token           String     @unique
+  channel         String // 'email', 'sms'
+  status          String     @default("pending") // 'pending', 'accepted', 'expired'
+  expiresAt       DateTime
+  invitedByUserId String
+  group           BuyerGroup @relation(fields: [groupId], references: [id])
+  inviter         User       @relation("Inviter", fields: [invitedByUserId], references: [id])
+}
+
+model Property {
+  id                  String                  @id @default(uuid())
+  groupId             String
+  sourceUrl           String?
+  mlsId               String?
+  address             String
+  city                String
+  state               String
+  zip                 String
+  lat                 Float?
+  lng                 Float?
+  price               Float?
+  beds                Int?
+  baths               Float?
+  sqft                Float?
+  lotSize             Float?
+  yearBuilt           Int?
+  propertyType        String?
+  hoa                 Float?
+  taxInfo             String?
+  photos              String? // JSON array of URLs
+  description         String?
+  pros                String                  @default("[]") // JSON array of shared highlights
+  cons                String                  @default("[]") // JSON array of shared concerns
+  status              String                  @default("active") // 'active', 'pending', 'sold', 'archived'
+  addedById           String
+  addedAt             DateTime                @default(now())
+  group               BuyerGroup              @relation(fields: [groupId], references: [id])
+  notes               Note[]
+  itemStatuses        PropertyItemStatus[]
+  scores              PropertyScore[]
+  decisionSubmissions DecisionSubmission[]
+  criterionRatings    CriterionRating[]
+  capexItems          CapExItem[]
+  inspections         WalkthroughInspection[]
+  agentComments       AgentComment[]
+}
+
+model DecisionCriterion {
+  id            String            @id @default(uuid())
+  groupId       String
+  name          String
+  description   String?
+  category      String            @default("custom")
+  weight        Float             @default(1)
+  scaleMax      Int               @default(10)
+  isDealbreaker Boolean           @default(false)
+  sortOrder     Int               @default(0)
+  createdAt     DateTime          @default(now())
+  group         BuyerGroup        @relation(fields: [groupId], references: [id])
+  ratings       CriterionRating[]
+
+  @@index([groupId])
+}
+
+model DecisionSubmission {
+  id          String   @id @default(uuid())
+  propertyId  String
+  userId      String
+  submittedAt DateTime @default(now())
+  property    Property @relation(fields: [propertyId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([propertyId, userId])
+}
+
+model CriterionRating {
+  id                   String            @id @default(uuid())
+  propertyId           String
+  criterionId          String
+  userId               String
+  value                Float
+  dealbreakerTriggered Boolean           @default(false)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  property             Property          @relation(fields: [propertyId], references: [id])
+  criterion            DecisionCriterion @relation(fields: [criterionId], references: [id])
+  user                 User              @relation(fields: [userId], references: [id])
+
+  @@unique([propertyId, criterionId, userId])
+  @@index([propertyId])
+}
+
+model CapExItem {
+  id         String   @id @default(uuid())
+  propertyId String
+  name       String
+  category   String?
+  amount     Float
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  property   Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+}
+
+model WalkthroughInspection {
+  id          String   @id @default(uuid())
+  propertyId  String
+  authorId    String
+  area        String
+  condition   String
+  notes       String?
+  media       String? // JSON array of media metadata
+  items       String? // JSON array of structured inspection items
+  inspectedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  property    Property @relation(fields: [propertyId], references: [id])
+  author      User     @relation(fields: [authorId], references: [id])
+
+  @@index([propertyId])
+}
+
+model AgentComment {
+  id           String   @id @default(uuid())
+  propertyId   String
+  inspectionId String?
+  authorId     String
+  body         String
+  createdAt    DateTime @default(now())
+  property     Property @relation(fields: [propertyId], references: [id])
+  author       User     @relation(fields: [authorId], references: [id])
+
+  @@index([propertyId])
+}
+
+model Note {
+  id          String    @id @default(uuid())
+  propertyId  String
+  authorId    String
+  body        String
+  visitDate   DateTime?
+  visibility  String    @default("shared") // 'shared', 'private'
+  createdAt   DateTime  @default(now())
+  attachments String? // JSON array of photo URLs
+  property    Property  @relation(fields: [propertyId], references: [id])
+  author      User      @relation(fields: [authorId], references: [id])
+}
+
+model ChecklistItem {
+  id          String               @id @default(uuid())
+  groupId     String
+  label       String
+  category    String // 'must-have', 'nice-to-have'
+  createdById String
+  isShared    Boolean              @default(true)
+  group       BuyerGroup           @relation(fields: [groupId], references: [id])
+  weights     UserItemWeight[]
+  statuses    PropertyItemStatus[]
+}
+
+model UserItemWeight {
+  userId          String
+  checklistItemId String
+  weight          Int // 1-10
+  user            User          @relation(fields: [userId], references: [id])
+  item            ChecklistItem @relation(fields: [checklistItemId], references: [id])
+
+  @@id([userId, checklistItemId])
+}
+
+model PropertyItemStatus {
+  propertyId      String
+  checklistItemId String
+  checkedByUserId String
+  isMet           String // 'yes', 'no', 'unknown'
+  notes           String?
+  property        Property      @relation(fields: [propertyId], references: [id])
+  item            ChecklistItem @relation(fields: [checklistItemId], references: [id])
+  user            User          @relation(fields: [checkedByUserId], references: [id])
+
+  @@id([propertyId, checklistItemId, checkedByUserId])
+}
+
+model SearchCriteria {
+  id            String     @id @default(uuid())
+  groupId       String     @unique
+  minPrice      Float?
+  maxPrice      Float?
+  minBeds       Int?
+  minBaths      Float?
+  minSqft       Float?
+  propertyTypes String? // JSON array
+  yearBuiltMin  Int?
+  yearBuiltMax  Int?
+  lotSizeMin    Float?
+  hoaMax        Float?
+  schoolRating  Int?
+  group         BuyerGroup @relation(fields: [groupId], references: [id])
+}
+
+model InterestRateSnapshot {
+  id        String   @id @default(uuid())
+  date      DateTime
+  source    String // 'FRED', 'PMMS'
+  rateType  String // '30yr', '15yr', 'ARM'
+  rate      Float
+  fetchedAt DateTime @default(now())
+}
+
+model PropertyScore {
+  id           String   @id @default(uuid())
+  propertyId   String
+  userId       String? // null for group aggregate
+  score        Float
+  type         String // 'individual', 'aggregate'
+  calculatedAt DateTime @default(now())
+  property     Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+}

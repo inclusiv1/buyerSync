@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "BuyerGroup_primaryBuyerId_name_key" ON "BuyerGroup"("primaryBuyerId", "name");

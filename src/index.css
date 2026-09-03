@@ -1,0 +1,149 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 33% 97%;
+    --foreground: 30 10% 15%;
+
+    --card: 40 30% 95%;
+    --card-foreground: 30 10% 15%;
+
+    --popover: 40 33% 97%;
+    --popover-foreground: 30 10% 15%;
+
+    --primary: 18 45% 45%;
+    --primary-foreground: 40 33% 97%;
+
+    --secondary: 30 15% 85%;
+    --secondary-foreground: 30 10% 20%;
+
+    --muted: 30 10% 90%;
+    --muted-foreground: 30 8% 45%;
+
+    --accent: 35 40% 92%;
+    --accent-foreground: 30 10% 20%;
+
+    --destructive: 4 52% 47%;
+    --destructive-foreground: 40 33% 97%;
+
+    --border: 30 15% 84%;
+    --input: 30 15% 80%;
+    --ring: 18 45% 45%;
+
+    --radius: 0.125rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    background-image:
+      linear-gradient(hsl(var(--foreground) / 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--foreground) / 0.018) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+  }
+  ::selection {
+    background: hsl(var(--primary) / 0.22);
+  }
+}
+
+@layer components {
+  .editorial-shell {
+    @apply min-h-screen bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at 78% 2%, hsl(24 45% 86% / 0.72), transparent 32rem),
+      radial-gradient(circle at 4% 38%, hsl(40 45% 91% / 0.6), transparent 24rem);
+  }
+  .editorial-nav {
+    @apply sticky top-0 z-20 border-b border-foreground/10 bg-background/95 backdrop-blur;
+  }
+  .editorial-container {
+    @apply mx-auto w-full max-w-7xl px-5 md:px-10;
+  }
+  .eyebrow {
+    @apply text-[0.68rem] font-medium uppercase tracking-[0.26em] text-muted-foreground;
+  }
+  .display-title {
+    @apply font-serif text-4xl font-medium leading-[0.95] tracking-[-0.035em] md:text-6xl;
+  }
+  .editorial-rule {
+    @apply border-foreground/10;
+  }
+  .auth-visual {
+    @apply relative isolate overflow-hidden bg-cover bg-center;
+  }
+  .auth-visual::after {
+    content: '';
+    @apply pointer-events-none absolute inset-0 -z-10;
+    background: linear-gradient(180deg, rgb(22 28 24 / 0.08) 18%, rgb(19 22 19 / 0.78) 100%);
+  }
+  .glass-label {
+    @apply inline-flex items-center gap-2 border border-white/25 bg-black/15 px-3 py-2 text-[0.64rem] font-medium uppercase tracking-[0.2em] text-white backdrop-blur-md;
+  }
+  .dashboard-hero {
+    @apply relative isolate overflow-hidden border border-white/15 bg-cover bg-center text-white shadow-[0_30px_80px_-45px_rgba(36,31,27,0.8)];
+    min-height: 27rem;
+  }
+  .dashboard-hero::before {
+    content: '';
+    @apply absolute inset-0 -z-10;
+    background:
+      linear-gradient(90deg, rgb(22 25 21 / 0.9) 0%, rgb(27 29 24 / 0.58) 52%, rgb(22 25 21 / 0.16) 100%),
+      linear-gradient(0deg, rgb(20 22 19 / 0.55), transparent 55%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-hero {
+    animation: hero-reveal 700ms ease-out both;
+  }
+  @keyframes hero-reveal {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
