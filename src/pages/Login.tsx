@@ -74,7 +74,7 @@ const Login = () => {
         style={{ backgroundImage: "url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1800&q=88')" }}
       >
         <div className="flex items-center justify-between text-white">
-          <div className="font-serif text-3xl">BuyerSync</div>
+          <div className="font-serif text-3xl">Buyer Sync</div>
           <span className="glass-label"><KeyRound className="h-3.5 w-3.5" /> Decisions, together</span>
         </div>
         <div className="max-w-xl text-white">
@@ -84,7 +84,7 @@ const Login = () => {
         </div>
       </section>
       <section className="relative flex items-center justify-center px-5 pb-12 pt-44 md:px-12 lg:py-12">
-      <div className="absolute inset-x-5 top-5 h-28 bg-cover bg-center lg:hidden" style={{ backgroundImage: "linear-gradient(90deg, rgba(28,31,26,.2), rgba(28,31,26,.65)), url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=80')" }}><span className="absolute bottom-4 left-4 font-serif text-2xl text-white">BuyerSync</span></div>
+      <div className="absolute inset-x-5 top-5 h-28 bg-cover bg-center lg:hidden" style={{ backgroundImage: "linear-gradient(90deg, rgba(28,31,26,.2), rgba(28,31,26,.65)), url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=80')" }}><span className="absolute bottom-4 left-4 font-serif text-2xl text-white">Buyer Sync</span></div>
       <Card className="w-full max-w-md border-0 bg-transparent shadow-none">
         <CardHeader className="px-0">
           <p className="eyebrow mb-3">Welcome back</p>

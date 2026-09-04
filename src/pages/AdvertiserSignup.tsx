@@ -28,7 +28,7 @@ const AdvertiserSignup = () => {
   return (
     <div className="editorial-shell flex min-h-screen items-center justify-center p-5">
       <Card className="w-full max-w-lg bg-background/90">
-        <CardHeader><p className="eyebrow">BuyerSync partners</p><CardTitle className="text-4xl">Create an advertiser account</CardTitle><p className="text-sm text-muted-foreground">Submit brand-safe campaigns for manual review and invoicing.</p></CardHeader>
+        <CardHeader><p className="eyebrow">Buyer Sync partners</p><CardTitle className="text-4xl">Create an advertiser account</CardTitle><p className="text-sm text-muted-foreground">Submit brand-safe campaigns for manual review and invoicing.</p></CardHeader>
         <CardContent><form className="space-y-4" onSubmit={submit}>
           <Input required minLength={2} placeholder="Business or contact name" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} />
           <Input required type="email" placeholder="Email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} />

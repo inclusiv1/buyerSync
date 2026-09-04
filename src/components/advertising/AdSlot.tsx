@@ -78,7 +78,7 @@ export const AdSlot = ({ placement }: { placement: Placement }) => {
 
   return (
     <aside className={`ad-house ${horizontal ? 'md:flex-row md:items-center md:justify-between' : ''}`} aria-label="Advertising opportunity">
-      <div><span className="ad-disclosure">Partner with BuyerSync</span><p className="mt-3 font-serif text-xl">Reach active home buyers.</p></div>
+      <div><span className="ad-disclosure">Partner with Buyer Sync</span><p className="mt-3 font-serif text-xl">Reach active home buyers.</p></div>
       <Link to="/advertise" className="mt-4 inline-block text-xs font-semibold uppercase tracking-[0.15em] text-primary">Advertise here →</Link>
     </aside>
   );

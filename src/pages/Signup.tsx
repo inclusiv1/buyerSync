@@ -46,7 +46,7 @@ const Signup = () => {
         style={{ backgroundImage: "url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1800&q=88')" }}
       >
         <div className="flex items-center justify-between text-white">
-          <div className="font-serif text-3xl">BuyerSync</div>
+          <div className="font-serif text-3xl">Buyer Sync</div>
           <span className="glass-label"><Users className="h-3.5 w-3.5" /> Built for two</span>
         </div>
         <div className="max-w-xl text-white">
@@ -56,7 +56,7 @@ const Signup = () => {
         </div>
       </section>
       <section className="relative flex items-center justify-center px-5 pb-12 pt-44 md:px-12 lg:py-12">
-      <div className="absolute inset-x-5 top-5 h-28 bg-cover bg-center lg:hidden" style={{ backgroundImage: "linear-gradient(90deg, rgba(28,31,26,.2), rgba(28,31,26,.65)), url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80')" }}><span className="absolute bottom-4 left-4 font-serif text-2xl text-white">BuyerSync</span></div>
+      <div className="absolute inset-x-5 top-5 h-28 bg-cover bg-center lg:hidden" style={{ backgroundImage: "linear-gradient(90deg, rgba(28,31,26,.2), rgba(28,31,26,.65)), url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80')" }}><span className="absolute bottom-4 left-4 font-serif text-2xl text-white">Buyer Sync</span></div>
       <Card className="w-full max-w-md border-0 bg-transparent shadow-none">
         <CardHeader className="px-0">
           <p className="eyebrow mb-3">Begin your collection</p>
@@ -64,7 +64,7 @@ const Signup = () => {
           <p className="pt-2 text-sm text-muted-foreground">Bring every listing, note, and perspective together.</p>
           <div className="mt-4 flex gap-3 border border-primary/20 bg-primary/5 p-4 text-sm leading-6">
             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">✓</span>
-            <p><span className="font-semibold text-foreground">BuyerSync is completely free.</span> There are no paid plans, subscriptions, credit card requirements, or charges after signup.</p>
+            <p><span className="font-semibold text-foreground">Buyer Sync is completely free.</span> There are no paid plans, subscriptions, credit card requirements, or charges after signup.</p>
           </div>
         </CardHeader>
         <CardContent>

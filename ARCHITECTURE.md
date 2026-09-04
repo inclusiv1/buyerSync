@@ -1,4 +1,4 @@
-# BuyerSync Decision-Support Architecture
+# Buyer Sync Decision-Support Architecture
 
 ## Domain boundaries
 

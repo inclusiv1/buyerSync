@@ -11,6 +11,8 @@ import Comparison from '@/pages/Comparison';
 import AdvertiserSignup from '@/pages/AdvertiserSignup';
 import AdvertisingPortal from '@/pages/AdvertisingPortal';
 import Landing from '@/pages/Landing';
+import Disclaimer from '@/pages/Disclaimer';
+import SiteFooter from '@/components/SiteFooter';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
 
@@ -50,6 +52,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
+          <Route path="/disclaimer" element={<Disclaimer />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/advertise/signup" element={<AdvertiserSignup />} />
@@ -62,6 +65,7 @@ const App = () => {
           <Route path="/checklist" element={<ProtectedRoute><Checklist /></ProtectedRoute>} />
           <Route path="/compare" element={<ProtectedRoute><Comparison /></ProtectedRoute>} />
         </Routes>
+        <SiteFooter />
       </BrowserRouter>
     </QueryClientProvider>
   );

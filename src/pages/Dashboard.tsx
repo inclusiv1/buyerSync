@@ -490,7 +490,7 @@ const Dashboard = () => {
         <div className="editorial-container flex h-20 items-center justify-between">
           <div className="flex items-center gap-3 text-primary">
             <Home className="h-5 w-5" strokeWidth={1.5} />
-            <span className="font-serif text-3xl font-medium text-foreground">BuyerSync</span>
+            <span className="font-serif text-3xl font-medium text-foreground">Buyer Sync</span>
           </div>
           <div className="hidden items-center gap-8 text-[0.68rem] font-medium uppercase tracking-[0.2em] text-muted-foreground md:flex">
             <span className="text-foreground">Properties</span>
