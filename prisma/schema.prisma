@@ -30,6 +30,31 @@ model User {
   criterionRatings    CriterionRating[]
   inspections         WalkthroughInspection[]
   agentComments       AgentComment[]
+  adCampaigns         AdCampaign[]
+}
+
+model AdCampaign {
+  id              String   @id @default(uuid())
+  advertiserId    String
+  name            String
+  headline        String
+  body            String
+  imageUrl        String
+  destinationUrl  String
+  placement       String   @default("any") // 'left', 'right', 'bottom', 'any'
+  status          String   @default("draft") // 'draft', 'pending', 'approved', 'rejected', 'paused'
+  paymentStatus   String   @default("pending") // 'pending', 'invoiced', 'paid', 'waived'
+  startsAt        DateTime?
+  endsAt          DateTime?
+  rejectionReason String?
+  impressions     Int      @default(0)
+  clicks          Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  advertiser      User     @relation(fields: [advertiserId], references: [id])
+
+  @@index([advertiserId])
+  @@index([status, paymentStatus, placement])
 }
 
 model BuyerGroup {

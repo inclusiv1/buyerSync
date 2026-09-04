@@ -136,6 +136,44 @@
       linear-gradient(90deg, rgb(22 25 21 / 0.9) 0%, rgb(27 29 24 / 0.58) 52%, rgb(22 25 21 / 0.16) 100%),
       linear-gradient(0deg, rgb(20 22 19 / 0.55), transparent 55%);
   }
+  .ad-dashboard-layout {
+    @apply mx-auto w-full;
+  }
+  .ad-side-rail {
+    @apply hidden;
+  }
+  .ad-creative, .ad-house {
+    @apply overflow-hidden border border-foreground/10 bg-background/90 shadow-sm;
+  }
+  .ad-house {
+    @apply flex flex-col border-dashed p-5;
+  }
+  .ad-disclosure {
+    @apply block px-3 pt-2 text-[0.56rem] font-medium uppercase tracking-[0.18em] text-muted-foreground;
+  }
+  .ad-house .ad-disclosure {
+    @apply p-0;
+  }
+  .ad-creative-horizontal > a {
+    @apply md:flex md:items-center;
+  }
+}
+
+@media (min-width: 1600px) {
+  .ad-dashboard-layout {
+    display: grid;
+    grid-template-columns: 11.5rem minmax(0, 80rem) 11.5rem;
+    justify-content: center;
+    gap: 1.25rem;
+    padding-inline: 1rem;
+  }
+  .ad-side-rail {
+    display: block;
+    position: sticky;
+    top: 6rem;
+    align-self: start;
+    padding-top: 2.5rem;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {

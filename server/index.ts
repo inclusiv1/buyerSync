@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import multer from 'multer';
+import { mkdir, writeFile } from 'node:fs/promises';
 import prisma from './lib/prisma';
 import { parsePropertyText } from './services/scraper';
 import { importListing, type ImportAttempt } from './services/listingImport';
@@ -11,6 +13,8 @@ import { calculateScore } from './utils/scoring';
 import { buildDecisionResult } from './utils/decision';
 import { getLatestRates } from './services/mortgage';
 import { isTestMode, setupTestMode, testAccounts } from './testMode';
+import { adStatuses, isCampaignLive, parseCampaign, paymentStatuses, safeHttpsUrl } from './utils/advertising';
+import { detectAdCreativeExtension } from './utils/adCreativeUpload';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -24,6 +28,14 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 const importRequests = new Map<string, number[]>();
+const adCreativeDirectory = path.join(__dirname, '../uploads/ad-creatives');
+const adCreativeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 } });
+
+function assertGeneratedClientIsCurrent() {
+  if (!prisma.adCampaign) {
+    throw new Error('Prisma Client is out of date. Stop the backend completely, run npm run db:setup, and restart with npm run dev.');
+  }
+}
 
 function canImport(userId: string): boolean {
   const cutoff = Date.now() - 60_000;
@@ -36,6 +48,7 @@ function canImport(userId: string): boolean {
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/uploads/ad-creatives', express.static(adCreativeDirectory, { immutable: true, maxAge: '1y' }));
 
 // Serve static files from the React app in production
 if (process.env.NODE_ENV === 'production') {
@@ -54,7 +67,7 @@ if (process.env.NODE_ENV === 'production') {
 // Auth Routes
 app.post('/api/auth/signup', async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
     const slug = email.split('@')[0] + '-' + Math.random().toString(36).substring(2, 7);
 
@@ -63,7 +76,7 @@ app.post('/api/auth/signup', async (req, res) => {
         name,
         email,
         passwordHash: hashedPassword,
-        role: role || 'primary_buyer',
+        role: 'primary_buyer',
         profileSlug: slug,
       },
     });
@@ -95,6 +108,28 @@ app.post('/api/auth/signup', async (req, res) => {
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/auth/advertiser-signup', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (typeof name !== 'string' || name.trim().length < 2 || typeof email !== 'string' || typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({ error: 'Name, valid email, and password of at least 8 characters are required' });
+    }
+    const user = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        passwordHash: await bcrypt.hash(password, 10),
+        role: 'advertiser',
+        profileSlug: `advertiser-${crypto.randomUUID()}`,
+      },
+    });
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET);
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  } catch (error: any) {
+    res.status(400).json({ error: error.code === 'P2002' ? 'An account with that email already exists' : error.message });
   }
 });
 
@@ -204,12 +239,138 @@ const findAccessibleProperty = async (propertyId: string, userId: string) => {
   return membership ? { property, membership } : null;
 };
 
+const requireRole = (...roles: string[]) => async (req: any, res: any, next: any) => {
+  const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { role: true } });
+  if (!user || !roles.includes(user.role)) return res.status(403).json({ error: 'You do not have access to this area' });
+  next();
+};
+
 app.get('/api/me', authenticate, async (req: any, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.userId },
     include: { memberships: { include: { group: { include: { properties: true } } } } },
   });
   res.json(user);
+});
+
+// Advertising routes
+app.post('/api/advertiser/creative-upload', authenticate, requireRole('advertiser'), (req, res) => {
+  adCreativeUpload.single('image')(req, res, async (uploadError) => {
+    if (uploadError) {
+      const message = uploadError instanceof multer.MulterError && uploadError.code === 'LIMIT_FILE_SIZE'
+        ? 'Image must be 5 MB or smaller'
+        : 'Could not upload image';
+      return res.status(400).json({ error: message });
+    }
+    if (!req.file) return res.status(400).json({ error: 'Choose an image to upload' });
+
+    const extension = detectAdCreativeExtension(req.file.buffer);
+    if (!extension) return res.status(400).json({ error: 'Use a JPEG, PNG, WebP, or GIF image' });
+
+    try {
+      await mkdir(adCreativeDirectory, { recursive: true });
+      const filename = `${crypto.randomUUID()}.${extension}`;
+      await writeFile(path.join(adCreativeDirectory, filename), req.file.buffer, { flag: 'wx' });
+      return res.status(201).json({ imageUrl: `/api/uploads/ad-creatives/${filename}` });
+    } catch {
+      return res.status(500).json({ error: 'Could not store image' });
+    }
+  });
+});
+
+app.get('/api/ads/config', (_req, res) => {
+  const scriptUrl = process.env.CONTEXTUAL_AD_SCRIPT_URL;
+  let safeScriptUrl: string | null = null;
+  if (scriptUrl) {
+    try { safeScriptUrl = safeHttpsUrl(scriptUrl, 'Contextual ad script URL'); } catch { safeScriptUrl = null; }
+  }
+  res.json({
+    enabled: Boolean(safeScriptUrl && process.env.CONTEXTUAL_AD_PUBLISHER_ID),
+    scriptUrl: safeScriptUrl,
+    publisherId: process.env.CONTEXTUAL_AD_PUBLISHER_ID || null,
+    slots: {
+      left: process.env.CONTEXTUAL_AD_LEFT_SLOT || null,
+      right: process.env.CONTEXTUAL_AD_RIGHT_SLOT || null,
+      bottom: process.env.CONTEXTUAL_AD_BOTTOM_SLOT || null,
+    },
+  });
+});
+
+app.get('/api/ads/serve', async (req, res) => {
+  const placement = typeof req.query.placement === 'string' ? req.query.placement : '';
+  if (!['left', 'right', 'bottom'].includes(placement)) return res.status(400).json({ error: 'Invalid placement' });
+  const campaigns = await prisma.adCampaign.findMany({
+    where: { status: 'approved', paymentStatus: { in: ['paid', 'waived'] }, placement: { in: [placement, 'any'] } },
+    select: { id: true, headline: true, body: true, imageUrl: true, destinationUrl: true, placement: true, status: true, paymentStatus: true, startsAt: true, endsAt: true },
+  });
+  const eligible = campaigns.filter(campaign => isCampaignLive(campaign));
+  res.json(eligible.length ? eligible[Math.floor(Math.random() * eligible.length)] : null);
+});
+
+app.post('/api/ads/:id/impression', async (req, res) => {
+  const campaign = await prisma.adCampaign.findUnique({ where: { id: req.params.id } });
+  if (!campaign || !isCampaignLive(campaign)) return res.status(404).json({ error: 'Ad not found' });
+  await prisma.adCampaign.update({ where: { id: campaign.id }, data: { impressions: { increment: 1 } } });
+  res.status(204).end();
+});
+
+app.post('/api/ads/:id/click', async (req, res) => {
+  const campaign = await prisma.adCampaign.findUnique({ where: { id: req.params.id } });
+  if (!campaign || !isCampaignLive(campaign)) return res.status(404).json({ error: 'Ad not found' });
+  await prisma.adCampaign.update({ where: { id: campaign.id }, data: { clicks: { increment: 1 } } });
+  res.status(204).end();
+});
+
+app.get('/api/advertiser/campaigns', authenticate, requireRole('advertiser'), async (req: any, res) => {
+  res.json(await prisma.adCampaign.findMany({ where: { advertiserId: req.userId }, orderBy: { createdAt: 'desc' } }));
+});
+
+app.post('/api/advertiser/campaigns', authenticate, requireRole('advertiser'), async (req: any, res) => {
+  try {
+    const data = parseCampaign(req.body);
+    res.status(201).json(await prisma.adCampaign.create({ data: { ...data, advertiserId: req.userId } }));
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.patch('/api/advertiser/campaigns/:id', authenticate, requireRole('advertiser'), async (req: any, res) => {
+  try {
+    const existing = await prisma.adCampaign.findFirst({ where: { id: req.params.id, advertiserId: req.userId } });
+    if (!existing) return res.status(404).json({ error: 'Campaign not found' });
+    const data = parseCampaign(req.body);
+    res.json(await prisma.adCampaign.update({ where: { id: existing.id }, data: { ...data, status: 'draft', rejectionReason: null } }));
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/advertiser/campaigns/:id/submit', authenticate, requireRole('advertiser'), async (req: any, res) => {
+  const existing = await prisma.adCampaign.findFirst({ where: { id: req.params.id, advertiserId: req.userId } });
+  if (!existing) return res.status(404).json({ error: 'Campaign not found' });
+  if (!['draft', 'rejected', 'paused'].includes(existing.status)) return res.status(409).json({ error: 'Campaign cannot be submitted in its current state' });
+  res.json(await prisma.adCampaign.update({ where: { id: existing.id }, data: { status: 'pending', rejectionReason: null } }));
+});
+
+app.get('/api/admin/campaigns', authenticate, requireRole('admin'), async (_req, res) => {
+  res.json(await prisma.adCampaign.findMany({ include: { advertiser: { select: { id: true, name: true, email: true } } }, orderBy: { createdAt: 'desc' } }));
+});
+
+app.patch('/api/admin/campaigns/:id', authenticate, requireRole('admin'), async (req, res) => {
+  const status = req.body.status;
+  const paymentStatus = req.body.paymentStatus;
+  if (!adStatuses.includes(status) || !paymentStatuses.includes(paymentStatus)) return res.status(400).json({ error: 'Invalid campaign or payment status' });
+  if (status === 'rejected' && (typeof req.body.rejectionReason !== 'string' || !req.body.rejectionReason.trim())) {
+    return res.status(400).json({ error: 'A rejection reason is required' });
+  }
+  try {
+    res.json(await prisma.adCampaign.update({
+      where: { id: req.params.id },
+      data: { status, paymentStatus, rejectionReason: status === 'rejected' ? req.body.rejectionReason.trim().slice(0, 500) : null },
+    }));
+  } catch (error: any) {
+    res.status(error.code === 'P2025' ? 404 : 400).json({ error: error.code === 'P2025' ? 'Campaign not found' : error.message });
+  }
 });
 
 app.get('/api/searches', authenticate, async (req: any, res) => {
@@ -1157,6 +1318,7 @@ app.post('/api/search-criteria', authenticate, async (req: any, res) => {
 });
 
 const startServer = async () => {
+  assertGeneratedClientIsCurrent();
   if (isTestMode()) {
     await setupTestMode();
     console.log('Test mode enabled with three collaborative users');

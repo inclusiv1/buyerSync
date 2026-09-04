@@ -43,7 +43,7 @@ const Login = () => {
   const completeLogin = (data: { token: string; user: TestUser }) => {
     setToken(data.token);
     setUser(data.user);
-    navigate('/');
+    navigate(data.user.role === 'advertiser' ? '/advertiser' : data.user.role === 'admin' ? '/admin/ads' : '/');
   };
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
@@ -150,6 +150,7 @@ const Login = () => {
               Create an account
             </Link>
           </div>
+          <p className="mt-3 text-center text-sm text-muted-foreground">Want to advertise? <Link to="/advertise/signup" className="font-medium text-primary hover:underline">Create a partner account</Link></p>
         </CardContent>
       </Card>
       </section>

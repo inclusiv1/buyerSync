@@ -14,6 +14,7 @@ import { isTestMode } from '@/lib/authStorage';
 import { Plus, Home, Users, Settings, LogOut, Pencil, Trash2, GitCompareArrows, ArrowRight, Sparkles, Search, ExternalLink } from 'lucide-react';
 import { PropertyEditForm } from '@/pages/PropertyDetail';
 import { PropertyMap } from '@/components/property/PropertyMap';
+import { AdSlot } from '@/components/advertising/AdSlot';
 
 const getPrimaryPhoto = (photosData: any): string | null => {
   if (!photosData) return null;
@@ -509,6 +510,8 @@ const Dashboard = () => {
         </div>
       </nav>
 
+      <div className="ad-dashboard-layout">
+      <div className="ad-side-rail"><AdSlot placement="left" /></div>
       <main className="editorial-container space-y-10 py-6 md:py-10">
         <section className="space-y-4 border-b border-foreground/10 pb-7">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -743,6 +746,9 @@ const Dashboard = () => {
           </Card>
         </div>
       </main>
+      <div className="ad-side-rail"><AdSlot placement="right" /></div>
+      </div>
+      <div className="editorial-container pb-4"><AdSlot placement="bottom" /></div>
     </div>
   );
 };

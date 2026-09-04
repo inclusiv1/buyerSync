@@ -41,3 +41,11 @@ The import response remains compatible with the editable property form and adds 
 ## Image credits
 
 The editorial background photography is served by [Unsplash](https://unsplash.com) under the [Unsplash License](https://unsplash.com/license). Listing photography remains owned and supplied by its original listing source.
+
+## Advertising
+
+The dashboard supports custom campaigns in left, right, and bottom placements. Advertisers register at `/advertise/signup`, create a draft at `/advertiser`, and submit it for review. Campaigns serve only after an administrator approves them and marks manual invoicing as `paid` or `waived`; advertisers can see impression, click, and click-through reporting.
+
+Promote an existing account to the permanent operator role with Prisma Studio (`npx prisma studio`) by changing the user's `role` to `admin`; that account is then routed to `/admin/ads`. Never expose this role through public registration.
+
+For contextual inventory, configure the optional `CONTEXTUAL_AD_*` values in `.env`. The provider-neutral adapter loads only an operator-configured HTTPS script and supplies publisher, slot, and placement data attributes. Confirm the selected network's consent, privacy, and attribute requirements before production use; custom advertiser input can never inject scripts.
