@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
@@ -17,6 +17,16 @@ import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
 
 const queryClient = new QueryClient();
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
+  }, [pathname]);
+
+  return null;
+};
 
 const RoleLanding = () => {
   const { token, user } = useAuthStore();
@@ -51,6 +61,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/disclaimer" element={<Disclaimer />} />
           <Route path="/login" element={<Login />} />
