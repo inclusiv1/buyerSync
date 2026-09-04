@@ -173,7 +173,7 @@ const authenticate = (req: any, res: any, next: any) => {
   const token = authHeader && authHeader.split(' ')[1];
   
   if (!token || token === 'undefined' || token === 'null') {
-    return res.status(401).json({ error: 'Sign in to access Buyer Sync' });
+    return res.status(401).json({ error: 'Sign in to access Home Buyer Sync' });
   }
 
   try {

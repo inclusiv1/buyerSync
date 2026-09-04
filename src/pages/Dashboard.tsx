@@ -15,6 +15,7 @@ import { Plus, Home, Users, Settings, LogOut, Pencil, Trash2, GitCompareArrows, 
 import { PropertyEditForm } from '@/pages/PropertyDetail';
 import { PropertyMap } from '@/components/property/PropertyMap';
 import { AdSlot } from '@/components/advertising/AdSlot';
+import BrandLogo from '@/components/BrandLogo';
 
 const getPrimaryPhoto = (photosData: any): string | null => {
   if (!photosData) return null;
@@ -488,10 +489,9 @@ const Dashboard = () => {
     <div className="editorial-shell pb-16">
       <nav className="editorial-nav">
         <div className="editorial-container flex h-20 items-center justify-between">
-          <div className="flex items-center gap-3 text-primary">
-            <Home className="h-5 w-5" strokeWidth={1.5} />
-            <span className="font-serif text-3xl font-medium text-foreground">Buyer Sync</span>
-          </div>
+          <Link to="/dashboard" aria-label="Home Buyer Sync dashboard">
+            <BrandLogo className="h-14 w-auto max-w-[12rem] sm:max-w-none" />
+          </Link>
           <div className="hidden items-center gap-8 text-[0.68rem] font-medium uppercase tracking-[0.2em] text-muted-foreground md:flex">
             <span className="text-foreground">Properties</span>
             <Link className="transition-colors hover:text-foreground" to="/checklist">Criteria</Link>

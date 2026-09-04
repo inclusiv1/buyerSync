@@ -1,6 +1,7 @@
 import { ArrowRight, Check, Heart, Home, MessageCircle, Scale, Search, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import BrandLogo from '@/components/BrandLogo';
 
 const benefits = [
   {
@@ -36,7 +37,9 @@ const Landing = () => (
   <div className="landing-page min-h-screen overflow-hidden bg-background">
     <header className="absolute inset-x-0 top-0 z-30 border-b border-white/20 text-white">
       <div className="editorial-container flex h-20 items-center justify-between">
-        <Link to="/" className="font-serif text-3xl font-medium">Buyer Sync</Link>
+        <Link to="/" aria-label="Home Buyer Sync home">
+          <BrandLogo variant="on-dark" className="h-16 w-auto" />
+        </Link>
         <nav className="flex items-center gap-2 sm:gap-4" aria-label="Account navigation">
           <Link to="/login" className="hidden text-xs font-medium uppercase tracking-[0.16em] text-white/85 transition hover:text-white sm:block">Sign in</Link>
           <Button asChild size="sm" className="bg-white text-foreground hover:bg-primary hover:text-white">
@@ -52,7 +55,7 @@ const Landing = () => (
           <div className="max-w-3xl">
             <p className="mb-5 flex items-center gap-2 text-[0.68rem] font-medium uppercase tracking-[0.28em] text-white/75"><Home className="h-4 w-4" /> A calmer way to buy a home</p>
             <h1 className="font-serif text-6xl font-medium leading-[0.87] tracking-[-0.045em] sm:text-7xl md:text-[6.8rem]">Find the place<br /><em>you both love.</em></h1>
-            <p className="mt-7 max-w-xl text-base leading-7 text-white/82 md:text-lg">Buyer Sync brings listings, notes, scores, and the people you trust into one thoughtful home search—from the first favorite to the front-door keys.</p>
+            <p className="mt-7 max-w-xl text-base leading-7 text-white/82 md:text-lg">Home Buyer Sync brings listings, notes, scores, and the people you trust into one thoughtful home search—from the first favorite to the front-door keys.</p>
             <div className="mt-9 flex flex-wrap items-center gap-4">
               <Button asChild size="lg" className="bg-white text-foreground hover:bg-primary hover:text-white"><Link to="/signup">Create your free account <ArrowRight /></Link></Button>
               <a href="#how-it-works" className="border-b border-white/60 pb-1 text-xs font-medium uppercase tracking-[0.16em] transition hover:border-white">See how it works</a>
@@ -65,9 +68,9 @@ const Landing = () => (
       <section className="editorial-container py-20 md:py-28">
         <div className="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
           <div>
-            <p className="eyebrow">Why Buyer Sync</p>
+            <p className="eyebrow">Why Home Buyer Sync</p>
             <h2 className="mt-4 font-serif text-5xl leading-[0.95] md:text-6xl">A shared place for a life-changing choice.</h2>
-            <p className="mt-6 max-w-md text-sm leading-7 text-muted-foreground">Home buying gets complicated when links, reactions, and priorities live in different places. Buyer Sync keeps the whole conversation together.</p>
+            <p className="mt-6 max-w-md text-sm leading-7 text-muted-foreground">Home buying gets complicated when links, reactions, and priorities live in different places. Home Buyer Sync keeps the whole conversation together.</p>
           </div>
           <div className="grid border-l border-t border-foreground/10 sm:grid-cols-2">
             {benefits.map(({ icon: Icon, title, copy }) => (
@@ -111,7 +114,7 @@ const Landing = () => (
             <MessageCircle className="h-6 w-6 text-primary" />
             <p className="eyebrow mt-8">Built for real conversations</p>
             <h2 className="mt-4 font-serif text-5xl leading-[0.95] md:text-6xl">Less tab chaos. More clarity.</h2>
-            <p className="mt-6 text-sm leading-7 text-muted-foreground">Everyone gets room to form an honest opinion, then Buyer Sync makes the common ground visible. Keep your search organized, understand each other’s priorities, and spend more time imagining life in the right home.</p>
+            <p className="mt-6 text-sm leading-7 text-muted-foreground">Everyone gets room to form an honest opinion, then Home Buyer Sync makes the common ground visible. Keep your search organized, understand each other’s priorities, and spend more time imagining life in the right home.</p>
             <Button asChild size="lg" className="mt-8"><Link to="/signup">Start searching together <ArrowRight /></Link></Button>
           </div>
         </div>
@@ -121,7 +124,7 @@ const Landing = () => (
         <div className="max-w-2xl">
           <p className="text-[0.68rem] font-medium uppercase tracking-[0.26em] text-white/65">Your next chapter</p>
           <h2 className="mt-4 font-serif text-5xl leading-[0.94] sm:text-6xl">The right home is better when you find it together.</h2>
-          <p className="mx-auto mt-5 max-w-lg text-sm leading-6 text-white/75">Create your completely free Buyer Sync account and turn your home search into one shared, confident decision. There is nothing to purchase after signup.</p>
+          <p className="mx-auto mt-5 max-w-lg text-sm leading-6 text-white/75">Create your completely free Home Buyer Sync account and turn your home search into one shared, confident decision. There is nothing to purchase after signup.</p>
           <Button asChild size="lg" className="mt-8 bg-white text-foreground hover:bg-primary hover:text-white"><Link to="/signup">Sign up free <ArrowRight /></Link></Button>
         </div>
       </section>

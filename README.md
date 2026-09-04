@@ -1,4 +1,4 @@
-# Buyer Sync
+# Home Buyer Sync
 
 Collaborative real-estate tour, scoring, cost, and comparison workspace built with React, TypeScript, Express, and Prisma.
 
@@ -52,6 +52,6 @@ For contextual inventory, configure the optional `CONTEXTUAL_AD_*` values in `.e
 
 ## Financing examples
 
-Priced property detail pages show conventional, FHA, and illustrative VA payment examples with multiple down payments and 15- or 30-year terms. Buyer Sync refreshes the public Freddie Mac Primary Mortgage Market Survey benchmarks from FRED every six hours and retains the latest cached observations during an outage; no API key is required.
+Priced property detail pages show conventional, FHA, and illustrative VA payment examples with multiple down payments and 15- or 30-year terms. Home Buyer Sync refreshes the public Freddie Mac Primary Mortgage Market Survey benchmarks from FRED every six hours and retains the latest cached observations during an outage; no API key is required.
 
 Credit score, income, and debt values entered in the calculator remain in the browser and are not saved. Results are educational principal-and-interest estimates rather than quotes or approvals, and the interface identifies excluded taxes, insurance, mortgage insurance, fees, and other costs. It also links to official VA, FHA, USDA, and property-state assistance resources so users can verify eligibility directly.

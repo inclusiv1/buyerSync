@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 210" role="img" aria-labelledby="title description">
+  <title id="title">Home Buyer Sync</title>
+  <desc id="description">HBS house logo with the tagline Syncing You to Your Dream Home</desc>
+  <g transform="translate(92 12)">
+    <path fill="#555657" d="M0 28h31v48h52V28h31v125H83v-49H31v49H0z"/>
+    <path fill="#34764f" d="M105 74 176 14l28 23V17h18v36l25 21-15 18-56-47-56 47z"/>
+    <path fill="#34764f" d="M126 72h49c32 0 49 13 49 37 0 27-18 44-50 44h-48zm31 25v31h16c13 0 20-5 20-16 0-10-7-15-20-15z"/>
+    <path fill="#555657" d="M298 41c25 0 44 8 58 22l-20 20c-11-10-23-15-38-15-12 0-19 4-19 11 0 7 7 10 25 14 36 8 51 20 51 44 0 10-3 19-8 27l-27-16c3-4 5-8 5-12 0-8-8-12-28-16-34-8-48-19-48-42 0-23 20-37 49-37z"/>
+    <path fill="#555657" d="m330 33 34 4-8 10 25 19-14 18-25-19-8 10z"/>
+    <path fill="#555657" d="m273 160-33-5 8-10-24-19 14-18 24 19 9-10z"/>
+  </g>
+  <text x="310" y="174" text-anchor="middle" fill="#34764f" font-family="Arial, Helvetica, sans-serif" font-size="38" font-weight="700">Home Buyer Sync</text>
+  <text x="310" y="201" text-anchor="middle" fill="#292929" font-family="Arial, Helvetica, sans-serif" font-size="18" letter-spacing=".4">Syncing You to Your Dream Home</text>
+</svg>
