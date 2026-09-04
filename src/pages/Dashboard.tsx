@@ -567,13 +567,16 @@ const Dashboard = () => {
             </div>
             <div className="flex w-full flex-col gap-3 md:w-auto md:items-end">
               {rates?.length > 0 && (
-                <div className="flex gap-4 border border-white/20 bg-black/15 px-4 py-3 text-xs text-white backdrop-blur-md">
-                  {rates.map((r: any) => (
-                    <div key={r.id} className="flex gap-2">
-                      <span className="uppercase tracking-wider text-white/65">{r.rateType}</span>
-                      <span className="font-semibold text-white">{r.rate}%</span>
-                    </div>
-                  ))}
+                <div className="border border-white/20 bg-black/15 px-4 py-3 text-xs text-white backdrop-blur-md">
+                  <div className="flex gap-4">
+                    {rates.map((r: any) => (
+                      <div key={r.id} className="flex gap-2">
+                        <span className="uppercase tracking-wider text-white/65">{r.rateType}</span>
+                        <span className="font-semibold text-white">{r.rate}%</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-[0.6rem] text-white/55">Latest available PMMS benchmarks · rates may change</p>
                 </div>
               )}
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>

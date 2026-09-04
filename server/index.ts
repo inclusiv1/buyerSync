@@ -168,58 +168,20 @@ app.post('/api/auth/test-login', async (req, res) => {
 });
 
 // Middleware to authenticate
-const ensureGuestUser = async () => {
-  let guest = await prisma.user.findUnique({ where: { email: 'guest@example.com' } });
-  if (!guest) {
-    guest = await prisma.user.create({
-      data: {
-        name: 'Guest User',
-        email: 'guest@example.com',
-        passwordHash: await bcrypt.hash('guest', 10),
-        role: 'primary_buyer',
-        profileSlug: 'guest',
-      }
-    });
-    const group = await prisma.buyerGroup.create({
-      data: {
-        name: 'Guest Home Search',
-        primaryBuyerId: guest.id,
-        memberships: {
-          create: {
-            userId: guest.id,
-            role: 'buyer',
-            status: 'accepted',
-          }
-        }
-      }
-    });
-    await prisma.searchCriteria.create({
-      data: {
-        groupId: group.id
-      }
-    });
-  }
-  return guest;
-};
-
-const authenticate = async (req: any, res: any, next: any) => {
+const authenticate = (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
   
   if (!token || token === 'undefined' || token === 'null') {
-    const guest = await ensureGuestUser();
-    req.userId = guest.id;
-    return next();
+    return res.status(401).json({ error: 'Sign in to access BuyerSync' });
   }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     req.userId = decoded.userId;
     next();
-  } catch (err) {
-    const guest = await ensureGuestUser();
-    req.userId = guest.id;
-    next();
+  } catch {
+    return res.status(401).json({ error: 'Your session is invalid or has expired' });
   }
 };
 

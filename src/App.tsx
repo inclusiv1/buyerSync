@@ -10,6 +10,7 @@ import Checklist from '@/pages/Checklist';
 import Comparison from '@/pages/Comparison';
 import AdvertiserSignup from '@/pages/AdvertiserSignup';
 import AdvertisingPortal from '@/pages/AdvertisingPortal';
+import Landing from '@/pages/Landing';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
 
@@ -17,24 +18,33 @@ const queryClient = new QueryClient();
 
 const RoleLanding = () => {
   const { token, user } = useAuthStore();
+  if (!token) return <Landing />;
   if (token && !user) return <div className="p-10 text-center">Loading account…</div>;
   if (user?.role === 'advertiser') return <Navigate to="/advertiser" replace />;
   if (user?.role === 'admin') return <Navigate to="/admin/ads" replace />;
   return <Dashboard />;
 };
 
+const ProtectedRoute = ({ children, roles }: { children: React.ReactNode; roles?: string[] }) => {
+  const { token, user } = useAuthStore();
+  if (!token) return <Navigate to="/login" replace />;
+  if (!user) return <div className="p-10 text-center">Loading account…</div>;
+  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
+  return children;
+};
+
 const App = () => {
-  const { token, setUser } = useAuthStore();
+  const { token, setUser, logout } = useAuthStore();
 
   useEffect(() => {
-    // Always fetch /me to get user info, even without token (backend will provide guest)
+    if (!token) {
+      setUser(null);
+      return;
+    }
     api.get('/me')
       .then(res => setUser(res.data))
-      .catch(() => {
-        // If it fails, we don't necessarily clear everything if we want to stay in guest mode
-        // but for now let's keep it simple
-      });
-  }, [token, setUser]);
+      .catch(() => logout());
+  }, [token, setUser, logout]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -43,14 +53,14 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/advertise/signup" element={<AdvertiserSignup />} />
-          <Route path="/advertise" element={<AdvertisingPortal />} />
-          <Route path="/advertiser" element={<AdvertisingPortal />} />
-          <Route path="/admin/ads" element={<AdvertisingPortal admin />} />
+          <Route path="/advertise" element={<ProtectedRoute roles={['advertiser']}><AdvertisingPortal /></ProtectedRoute>} />
+          <Route path="/advertiser" element={<ProtectedRoute roles={['advertiser']}><AdvertisingPortal /></ProtectedRoute>} />
+          <Route path="/admin/ads" element={<ProtectedRoute roles={['admin']}><AdvertisingPortal admin /></ProtectedRoute>} />
           <Route path="/invite/:token" element={<Invite />} />
           <Route path="/" element={<RoleLanding />} />
-          <Route path="/property/:id" element={<PropertyDetail />} />
-          <Route path="/checklist" element={<Checklist />} />
-          <Route path="/compare" element={<Comparison />} />
+          <Route path="/property/:id" element={<ProtectedRoute><PropertyDetail /></ProtectedRoute>} />
+          <Route path="/checklist" element={<ProtectedRoute><Checklist /></ProtectedRoute>} />
+          <Route path="/compare" element={<ProtectedRoute><Comparison /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

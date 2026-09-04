@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { useAuthStore } from '@/store/useAuthStore';
 import { WeightedScoringPanel } from '@/components/decision/WeightedScoringPanel';
 import { PropertyMap } from '@/components/property/PropertyMap';
+import { FinancingPanel } from '@/components/property/FinancingPanel';
 
 const toFormValue = (value: unknown) => value === undefined || value === null ? '' : String(value);
 
@@ -352,6 +353,17 @@ const PropertyDetail = () => {
               state={property.state}
               zip={property.zip}
             />
+
+            {property.price > 0 ? (
+              <FinancingPanel price={property.price} hoa={property.hoa} state={property.state} />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Financing examples</CardTitle>
+                  <CardDescription>Add a listing price to see current rate benchmarks and illustrative loan payments.</CardDescription>
+                </CardHeader>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>

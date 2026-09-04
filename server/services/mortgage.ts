@@ -1,76 +1,60 @@
 import axios from 'axios';
 import prisma from '../lib/prisma';
 
-const FRED_API_KEY = process.env.FRED_API_KEY;
+const rateSeries = [
+  { id: 'MORTGAGE30US', type: '30yr' },
+  { id: 'MORTGAGE15US', type: '15yr' },
+] as const;
+const refreshIntervalMs = 6 * 60 * 60 * 1000;
+let lastRefreshAttempt = 0;
 
 export async function fetchAndCacheRates() {
   try {
-    // If no API key, we use a mock for demo purposes as per instructions to "stub the send in dev"
-    // and "local-first MVP"
-    if (!FRED_API_KEY) {
-      console.log('No FRED_API_KEY found, using mock rates.');
-      const mockRates = [
-        { type: '30yr', rate: 6.85, source: 'FRED' },
-        { type: '15yr', rate: 6.12, source: 'FRED' },
-        { type: 'ARM', rate: 6.55, source: 'FRED' }
-      ];
-
-      for (const r of mockRates) {
-        await prisma.interestRateSnapshot.create({
-          data: {
-            date: new Date(),
-            source: r.source,
-            rateType: r.type,
-            rate: r.rate,
-          }
-        });
-      }
-      return;
-    }
-
-    const series = ['MORTGAGE30US', 'MORTGAGE15US'];
-    for (const s of series) {
-      const { data } = await axios.get(`https://api.stlouisfed.org/fred/series/observations`, {
-        params: {
-          series_id: s,
-          api_key: FRED_API_KEY,
-          file_type: 'json',
-          sort_order: 'desc',
-          limit: 1
-        }
+    lastRefreshAttempt = Date.now();
+    await Promise.all(rateSeries.map(async ({ id, type }) => {
+      const { data } = await axios.get<string>('https://fred.stlouisfed.org/graph/fredgraph.csv', {
+        params: { id, cosd: '2000-01-01' },
+        responseType: 'text',
+        timeout: 10_000,
       });
+      const latestLine = data.trim().split(/\r?\n/).reverse().find(line => /^\d{4}-\d{2}-\d{2},\d/.test(line));
+      if (!latestLine) throw new Error(`No current observation returned for ${id}`);
+      const [dateValue, rateValue] = latestLine.split(',');
+      const date = new Date(`${dateValue}T00:00:00.000Z`);
+      const rate = Number(rateValue);
+      if (!Number.isFinite(rate)) throw new Error(`Invalid observation returned for ${id}`);
 
-      const observation = data.observations[0];
-      if (observation) {
+      const existing = await prisma.interestRateSnapshot.findFirst({ where: { date, rateType: type, source: 'Freddie Mac PMMS via FRED' } });
+      if (!existing) {
         await prisma.interestRateSnapshot.create({
           data: {
-            date: new Date(observation.date),
-            source: 'FRED',
-            rateType: s === 'MORTGAGE30US' ? '30yr' : '15yr',
-            rate: parseFloat(observation.value),
+            date,
+            source: 'Freddie Mac PMMS via FRED',
+            rateType: type,
+            rate,
           }
         });
       }
-    }
+    }));
   } catch (error) {
     console.error('Failed to fetch mortgage rates:', error);
   }
 }
 
 export async function getLatestRates() {
-  const snapshots = await prisma.interestRateSnapshot.findMany({
-    orderBy: { fetchedAt: 'desc' },
-    take: 3
-  });
-  
-  // If no snapshots, try to fetch
-  if (snapshots.length === 0) {
+  if (!lastRefreshAttempt || Date.now() - lastRefreshAttempt >= refreshIntervalMs) {
     await fetchAndCacheRates();
-    return prisma.interestRateSnapshot.findMany({
-      orderBy: { fetchedAt: 'desc' },
-      take: 3
-    });
   }
-  
-  return snapshots;
+
+  const snapshots = await Promise.all(rateSeries.map(async ({ type }) => (
+    await prisma.interestRateSnapshot.findFirst({
+      where: { rateType: type, source: 'Freddie Mac PMMS via FRED' },
+      orderBy: [{ date: 'desc' }, { fetchedAt: 'desc' }],
+    }) || prisma.interestRateSnapshot.findFirst({
+      where: { rateType: type },
+      orderBy: [{ date: 'desc' }, { fetchedAt: 'desc' }],
+    })
+  )));
+
+  return snapshots.filter(snapshot => snapshot !== null);
 }

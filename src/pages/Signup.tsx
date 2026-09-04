@@ -62,6 +62,10 @@ const Signup = () => {
           <p className="eyebrow mb-3">Begin your collection</p>
           <CardTitle className="text-5xl">Create an account</CardTitle>
           <p className="pt-2 text-sm text-muted-foreground">Bring every listing, note, and perspective together.</p>
+          <div className="mt-4 flex gap-3 border border-primary/20 bg-primary/5 p-4 text-sm leading-6">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">✓</span>
+            <p><span className="font-semibold text-foreground">BuyerSync is completely free.</span> There are no paid plans, subscriptions, credit card requirements, or charges after signup.</p>
+          </div>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -110,7 +114,7 @@ const Signup = () => {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="mt-2 w-full gap-2">Create account <ArrowRight className="h-4 w-4" /></Button>
+              <Button type="submit" className="mt-2 w-full gap-2">Create my free account <ArrowRight className="h-4 w-4" /></Button>
             </form>
           </Form>
           <div className="mt-4 text-center text-sm">

@@ -49,3 +49,9 @@ The dashboard supports custom campaigns in left, right, and bottom placements. A
 Promote an existing account to the permanent operator role with Prisma Studio (`npx prisma studio`) by changing the user's `role` to `admin`; that account is then routed to `/admin/ads`. Never expose this role through public registration.
 
 For contextual inventory, configure the optional `CONTEXTUAL_AD_*` values in `.env`. The provider-neutral adapter loads only an operator-configured HTTPS script and supplies publisher, slot, and placement data attributes. Confirm the selected network's consent, privacy, and attribute requirements before production use; custom advertiser input can never inject scripts.
+
+## Financing examples
+
+Priced property detail pages show conventional, FHA, and illustrative VA payment examples with multiple down payments and 15- or 30-year terms. BuyerSync refreshes the public Freddie Mac Primary Mortgage Market Survey benchmarks from FRED every six hours and retains the latest cached observations during an outage; no API key is required.
+
+Credit score, income, and debt values entered in the calculator remain in the browser and are not saved. Results are educational principal-and-interest estimates rather than quotes or approvals, and the interface identifies excluded taxes, insurance, mortgage insurance, fees, and other costs. It also links to official VA, FHA, USDA, and property-state assistance resources so users can verify eligibility directly.
