@@ -12,6 +12,7 @@ import { importListing, type ImportAttempt } from './services/listingImport';
 import { calculateScore } from './utils/scoring';
 import { buildDecisionResult } from './utils/decision';
 import { getLatestRates } from './services/mortgage';
+import { sendInvitationEmail } from './services/email';
 import { isTestMode, setupTestMode, testAccounts } from './testMode';
 import { adStatuses, isCampaignLive, parseCampaign, paymentStatuses, safeHttpsUrl } from './utils/advertising';
 import { detectAdCreativeExtension } from './utils/adCreativeUpload';
@@ -399,15 +400,23 @@ app.post('/api/searches', authenticate, async (req: any, res) => {
 // Invitation Routes
 app.post('/api/invites', authenticate, async (req: any, res) => {
   try {
-    const { email, role, searchId } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const { role, searchId } = req.body;
+    if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address' });
+
     const membership = await prisma.groupMembership.findFirst({
-      where: { userId: req.userId, role: 'buyer', ...(searchId && { groupId: searchId }) }
+      where: { userId: req.userId, role: 'buyer', ...(searchId && { groupId: searchId }) },
+      include: {
+        group: { select: { name: true } },
+        user: { select: { name: true } },
+      },
     });
 
     if (!membership) return res.status(403).json({ error: 'Only primary buyers can invite' });
     const invitedRole = role === 'agent' ? 'agent' : 'co_buyer';
 
     const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const invite = await prisma.invitation.create({
       data: {
         groupId: membership.groupId,
@@ -415,14 +424,28 @@ app.post('/api/invites', authenticate, async (req: any, res) => {
         invitedRole,
         token,
         channel: 'email',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        expiresAt,
         invitedByUserId: req.userId,
       },
     });
 
-    // In dev, we just return the link
-    const inviteLink = `http://localhost:5173/invite/${token}`;
-    res.json({ invite, inviteLink });
+    const appUrl = (process.env.PUBLIC_APP_URL || 'http://localhost:5173').replace(/\/$/, '');
+    const inviteLink = `${appUrl}/invite/${token}`;
+    let delivery;
+    try {
+      delivery = await sendInvitationEmail({
+        to: email,
+        inviterName: membership.user.name,
+        searchName: membership.group.name,
+        inviteLink,
+        expiresAt,
+      });
+    } catch (error) {
+      console.error('Invitation email delivery failed:', error);
+      delivery = { sent: false, reason: 'delivery_failed' };
+    }
+
+    res.status(201).json({ invite, inviteLink, emailSent: delivery.sent, emailStatus: delivery.reason });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
@@ -443,7 +466,9 @@ app.post('/api/invites/accept', async (req, res) => {
   try {
     const { token, name, password } = req.body;
     const invite = await prisma.invitation.findUnique({ where: { token } });
-    if (!invite || invite.status !== 'pending') return res.status(404).json({ error: 'Invalid invitation' });
+    if (!invite || invite.status !== 'pending' || invite.expiresAt < new Date()) {
+      return res.status(404).json({ error: 'Invalid or expired invitation' });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const slug = invite.invitedEmail.split('@')[0] + '-' + Math.random().toString(36).substring(2, 7);

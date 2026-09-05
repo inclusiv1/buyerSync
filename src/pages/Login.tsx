@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import { isTestMode } from '@/lib/authStorage';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Heart, KeyRound, Users } from 'lucide-react';
 
@@ -33,11 +34,19 @@ const Login = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [testUsers, setTestUsers] = useState<TestUser[]>([]);
+  const [testUsersLoading, setTestUsersLoading] = useState(isTestMode);
+  const [testUsersError, setTestUsersError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isTestMode) return;
+
     api.get('/auth/test-users')
-      .then(({ data }) => setTestUsers(data))
-      .catch(() => setTestUsers([]));
+      .then(({ data }) => {
+        setTestUsers(data);
+        if (data.length !== 3) setTestUsersError('The three test accounts are not ready. Restart with npm run dev:test.');
+      })
+      .catch(() => setTestUsersError('Test accounts could not be loaded. Stop the current servers and restart with npm run dev:test.'))
+      .finally(() => setTestUsersLoading(false));
   }, []);
 
   const completeLogin = (data: { token: string; user: TestUser }) => {
@@ -92,20 +101,27 @@ const Login = () => {
           <p className="pt-2 text-sm text-muted-foreground">Continue your thoughtful home search.</p>
         </CardHeader>
         <CardContent>
-          {testUsers.length > 0 && (
+          {isTestMode && (
             <div className="mb-6 space-y-3 border border-primary/20 bg-primary/5 p-4">
               <div>
-                <p className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4" /> Test mode</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">Choose one user for this page. Open <span className="font-medium text-foreground">/login</span> in another page to score as someone else at the same time.</p>
+                <p className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4" /> Three-user test workspace</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">Choose a buyer for this tab. From the dashboard, use <span className="font-medium text-foreground">Another user</span> to open separate tabs for the other two perspectives.</p>
               </div>
-              <div className="grid gap-2">
-                {testUsers.map(testUser => (
-                  <Button key={testUser.id} type="button" variant="outline" className="h-auto justify-between px-3 py-2 text-left" onClick={() => loginAsTestUser(testUser.email)}>
-                    <span><span className="block text-sm">{testUser.name}</span><span className="block text-xs font-normal text-muted-foreground">{testUser.email}</span></span>
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                ))}
-              </div>
+              {testUsersLoading && <p className="text-sm text-muted-foreground" role="status">Preparing Alex, Blair, and Cameron…</p>}
+              {testUsersError && <p className="text-sm text-red-600" role="alert">{testUsersError}</p>}
+              {!testUsersLoading && !testUsersError && (
+                <div className="grid gap-2">
+                  {testUsers.map(testUser => (
+                    <Button key={testUser.id} type="button" variant="outline" className="h-auto justify-between px-3 py-2 text-left" onClick={() => loginAsTestUser(testUser.email)}>
+                      <span>
+                        <span className="block text-sm">{testUser.name}</span>
+                        <span className="block text-xs font-normal text-muted-foreground">{testUser.role === 'primary_buyer' ? 'Primary buyer' : 'Co-buyer'}</span>
+                      </span>
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           <Form {...form}>

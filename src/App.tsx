@@ -15,6 +15,7 @@ import Disclaimer from '@/pages/Disclaimer';
 import SiteFooter from '@/components/SiteFooter';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
+import { isTestMode } from '@/lib/authStorage';
 
 const queryClient = new QueryClient();
 
@@ -30,7 +31,7 @@ const ScrollToTop = () => {
 
 const RoleLanding = () => {
   const { token, user } = useAuthStore();
-  if (!token) return <Landing />;
+  if (!token) return isTestMode ? <Navigate to="/login" replace /> : <Landing />;
   if (token && !user) return <div className="p-10 text-center">Loading account…</div>;
   if (user?.role === 'advertiser') return <Navigate to="/advertiser" replace />;
   if (user?.role === 'admin') return <Navigate to="/admin/ads" replace />;

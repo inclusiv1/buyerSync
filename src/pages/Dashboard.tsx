@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
 import { isTestMode } from '@/lib/authStorage';
-import { Plus, Home, Users, Settings, LogOut, Pencil, Trash2, GitCompareArrows, ArrowRight, Sparkles, Search, ExternalLink } from 'lucide-react';
+import { Plus, Home, Users, Settings, LogOut, Pencil, Trash2, GitCompareArrows, ArrowRight, Sparkles, Search, ExternalLink, Mail } from 'lucide-react';
 import { PropertyEditForm } from '@/pages/PropertyDetail';
 import { PropertyMap } from '@/components/property/PropertyMap';
 import { AdSlot } from '@/components/advertising/AdSlot';
@@ -401,6 +401,9 @@ const Dashboard = () => {
   const queryClient = useQueryClient();
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteLink, setInviteLink] = useState('');
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   const [editingProperty, setEditingProperty] = useState<any>(null);
@@ -477,11 +480,21 @@ const Dashboard = () => {
   const selectedProperties = properties?.filter((property: any) => selectedPropertyIds.has(property.id)) || [];
 
   const sendInvite = async () => {
+    setInviteError('');
+    setInviteMessage('');
+    setInviteLink('');
+    setIsSendingInvite(true);
     try {
       const { data } = await api.post('/invites', { email: inviteEmail, searchId: selectedSearchId });
       setInviteLink(data.inviteLink);
-    } catch (err) {
-      console.error(err);
+      setInviteMessage(data.emailSent
+        ? `Invitation email sent to ${inviteEmail}.`
+        : 'The invitation was created, but email is not configured or delivery failed. Copy and share the link below.');
+      if (data.emailSent) setInviteEmail('');
+    } catch (err: any) {
+      setInviteError(err?.response?.data?.error || 'Could not create the invitation. Please try again.');
+    } finally {
+      setIsSendingInvite(false);
     }
   };
 
@@ -718,17 +731,22 @@ const Dashboard = () => {
               <CardDescription>Invite co-buyers or your agent to join {activeSearch?.name || 'this search'}.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input 
                   placeholder="Email address" 
+                  type="email"
                   value={inviteEmail} 
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteEmail(e.target.value)} 
                 />
-                <Button onClick={sendInvite}>Invite</Button>
+                <Button className="gap-2 whitespace-nowrap" onClick={sendInvite} disabled={!inviteEmail.trim() || !selectedSearchId || isSendingInvite}>
+                  <Mail className="h-4 w-4" /> {isSendingInvite ? 'Sending…' : 'Send email'}
+                </Button>
               </div>
+              {inviteMessage && <p className="text-sm text-primary" role="status">{inviteMessage}</p>}
+              {inviteError && <p className="text-sm text-red-600" role="alert">{inviteError}</p>}
               {inviteLink && (
                 <div className="p-3 bg-slate-100 rounded text-xs break-all border">
-                  <strong>Link:</strong> {inviteLink}
+                  <strong>Invitation link:</strong> {inviteLink}
                 </div>
               )}
             </CardContent>

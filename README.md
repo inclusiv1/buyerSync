@@ -12,15 +12,60 @@ npm run dev:full
 
 Node.js 20.19 or newer is required.
 
+## Invitation email
+
+The **Send email** button creates a seven-day project invitation and delivers it through standard SMTP. Configure `PUBLIC_APP_URL` and the `SMTP_*` values shown in `.env.example`. If delivery is unavailable, the dashboard keeps the invitation valid and shows a copyable link instead.
+
+For local testing without a mail account, use [Mailpit](https://github.com/axllent/mailpit), an open-source SMTP test server. Install and run Mailpit, keep the `.env.example` defaults (`localhost:1025`), and open `http://localhost:8025` to view received invitations. Mailpit captures local mail instead of delivering it to a real external inbox; production delivery requires SMTP credentials from a transactional email provider or your own properly configured mail server.
+
 ## Collaborative test mode
+
+Collaborative test mode lets you use three local buyers at the same time to verify shared listings, individual scoring, comparisons, and the contributor interface. It uses the normal local development database but enables test-only account setup and login controls.
+
+### Start test mode
+
+Use Node.js 20.19 or newer, install the project dependencies, and run:
 
 ```bash
 npm run dev:test
 ```
 
-Test mode creates three idempotent local accounts—Alex Morgan, Blair Chen, and Cameron Rivera—and adds all of them to `Test Collaborative Search`. The login page offers one-click account selection. Use **Another user** or open `/login` in a separate page to keep an independent login in each page and compare each buyer's scoring.
+The command prepares Prisma, synchronizes the local database schema, and starts an isolated test frontend at `http://localhost:5174` with its API at `http://localhost:4301`. These dedicated ports prevent a normal development session on ports `5173` and `3001` from serving the wrong login API.
 
-The test accounts and quick-login API are enabled only when `APP_MODE=test` and `NODE_ENV` is `development` or `test`. Production, QA, and UAT startup paths continue to use normal login and browser-wide persistent sessions.
+### Test accounts
+
+The test-mode startup creates or updates these accounts and adds them as accepted contributors to `Test Collaborative Search`:
+
+| User | Email | Search role |
+| --- | --- | --- |
+| Alex Morgan | `alex@test.buyersync.local` | Primary buyer |
+| Blair Chen | `blair@test.buyersync.local` | Co-buyer |
+| Cameron Rivera | `cameron@test.buyersync.local` | Co-buyer |
+
+The login page displays a **Test mode** panel with a one-click button for each account, so no password is needed for the normal testing workflow.
+
+### Test three users at once
+
+1. On the login page, choose **Alex Morgan**.
+2. On the dashboard, click **Another user** to open a separate login tab.
+3. In the new tab, choose **Blair Chen**.
+4. Open one more login tab and choose **Cameron Rivera**.
+5. Keep each user in a separate tab. Add a home to `Test Collaborative Search`, score it in each tab, and refresh or revisit the property to compare the shared results.
+
+Test mode stores authentication in browser `sessionStorage`, which is scoped to an individual tab. This keeps one active user in each tab instead of replacing the login in every open tab. Normal development and production use browser-wide persistent login storage instead.
+
+### Data and safety behavior
+
+- Setup is idempotent: restarting `npm run dev:test` reuses the three accounts and shared search rather than creating duplicates.
+- Homes, scores, and other changes use the local development database and remain available after a restart. Test mode does not automatically reset or delete them.
+- Stop the servers with `Ctrl+C`. Use `npm run dev` or `npm run dev:full` when you want normal local login without the test account selector.
+- The test users and quick-login API are available only when `APP_MODE=test` and `NODE_ENV` is `development` or `test`. Production, QA, and UAT startup paths cannot enable them.
+
+### Troubleshooting
+
+- If the test account buttons do not appear, open `http://localhost:5174` and confirm the terminal says the test API is running on port `4301`. Start the workspace with `npm run dev:test`, not `npm run dev`.
+- If a second login replaces the first, use the dashboard's **Another user** button or open `/login` in a new tab while test mode is running.
+- If startup reports a Prisma or schema error, confirm Node.js 20.19 or newer is active, then rerun `npm install` followed by `npm run dev:test`.
 
 ## Resilient listing imports
 
