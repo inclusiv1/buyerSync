@@ -16,7 +16,7 @@
     "dev:server": "tsx watch server/index.ts",
     "build": "npm run build:frontend",
     "build:frontend": "tsc -b && vite build",
-    "prestart": "prisma generate",
+    "prestart": "prisma generate && prisma db push",
     "start": "NODE_ENV=production tsx server/index.ts",
     "db:setup": "prisma generate && prisma db push",
     "lint": "oxlint",
