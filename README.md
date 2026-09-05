@@ -14,7 +14,7 @@ Node.js 20.19 or newer is required.
 
 ## Invitation email
 
-The **Send email** button creates a seven-day project invitation. Invitation links automatically use the host where the app is running, including Render domains; `PUBLIC_APP_URL` is only an optional fallback for requests without browser or proxy host information. If the `SMTP_*` values shown in `.env.example` are configured, the server sends the message directly. Otherwise, the button opens the signed-in user's default email application with the recipient, subject, and invitation already filled in—no copy-and-paste link is shown.
+The **Send email** button creates a seven-day project invitation. Invitation links automatically use the host where the app is running, including Render domains; `PUBLIC_APP_URL` is only an optional fallback for requests without browser or proxy host information. If the `SMTP_*` values shown in `.env.example` are configured, the server sends the message directly. Otherwise, the dashboard offers Gmail, Outlook, and Yahoo Mail buttons that open a browser-based draft with the recipient, subject, and invitation already filled in—no desktop email application or copy-and-paste link is required.
 
 For local testing without a mail account, use [Mailpit](https://github.com/axllent/mailpit), an open-source SMTP test server. Install and run Mailpit, keep the `.env.example` defaults (`localhost:1025`), and open `http://localhost:8025` to view received invitations. Mailpit captures local mail instead of delivering it to a real external inbox; production delivery requires SMTP credentials from a transactional email provider or your own properly configured mail server.
 

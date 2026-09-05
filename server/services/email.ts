@@ -50,10 +50,32 @@ export const buildInvitationMessage = ({ inviterName, inviterEmail, searchName, 
   };
 };
 
-export const buildInvitationEmailDraftUrl = (invitation: InvitationEmail) => {
+export const buildInvitationWebmailDrafts = (invitation: InvitationEmail) => {
   const message = buildInvitationMessage(invitation);
-  const query = new URLSearchParams({ subject: message.subject, body: message.text });
-  return `mailto:${encodeURIComponent(invitation.to)}?${query.toString()}`;
+  const commonFields = {
+    to: invitation.to,
+    subject: message.subject,
+    body: message.text,
+  };
+  const gmailQuery = new URLSearchParams({
+    view: 'cm',
+    fs: '1',
+    ...commonFields,
+    su: commonFields.subject,
+  });
+  gmailQuery.delete('subject');
+  const outlookQuery = new URLSearchParams(commonFields);
+  const yahooQuery = new URLSearchParams({
+    to: commonFields.to,
+    subject: commonFields.subject,
+    body: commonFields.body,
+  });
+
+  return [
+    { provider: 'Gmail', url: `https://mail.google.com/mail/?${gmailQuery.toString()}` },
+    { provider: 'Outlook', url: `https://outlook.live.com/mail/0/deeplink/compose?${outlookQuery.toString()}` },
+    { provider: 'Yahoo Mail', url: `https://compose.mail.yahoo.com/?${yahooQuery.toString()}` },
+  ];
 };
 
 export const sendInvitationEmail = async (invitation: InvitationEmail): Promise<EmailDeliveryResult> => {

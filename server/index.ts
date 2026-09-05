@@ -12,7 +12,7 @@ import { importListing, type ImportAttempt } from './services/listingImport';
 import { calculateScore } from './utils/scoring';
 import { buildDecisionResult } from './utils/decision';
 import { getLatestRates } from './services/mortgage';
-import { buildInvitationEmailDraftUrl, sendInvitationEmail } from './services/email';
+import { buildInvitationWebmailDrafts, sendInvitationEmail } from './services/email';
 import { isTestMode, setupTestMode, testAccounts } from './testMode';
 import { adStatuses, isCampaignLive, parseCampaign, paymentStatuses, safeHttpsUrl } from './utils/advertising';
 import { detectAdCreativeExtension } from './utils/adCreativeUpload';
@@ -448,7 +448,7 @@ app.post('/api/invites', authenticate, async (req: any, res) => {
       delivery = { sent: false, reason: 'delivery_failed' };
     }
 
-    const emailDraftUrl = delivery.sent ? undefined : buildInvitationEmailDraftUrl({
+    const emailDraftAlternatives = delivery.sent ? undefined : buildInvitationWebmailDrafts({
       to: email,
       inviterName: membership.user.name,
       inviterEmail: membership.user.email,
@@ -457,7 +457,12 @@ app.post('/api/invites', authenticate, async (req: any, res) => {
       expiresAt,
     });
 
-    res.status(201).json({ invite, emailSent: delivery.sent, emailDraftUrl });
+    res.status(201).json({
+      invite,
+      emailSent: delivery.sent,
+      emailDraftUrl: emailDraftAlternatives?.[0]?.url,
+      emailDraftAlternatives,
+    });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

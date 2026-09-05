@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildInvitationEmailDraftUrl, buildInvitationMessage, sendInvitationEmail } from './email';
+import { buildInvitationMessage, buildInvitationWebmailDrafts, sendInvitationEmail } from './email';
 
 test('builds an invitation email with the project and acceptance link', () => {
   const message = buildInvitationMessage({
@@ -32,8 +32,8 @@ test('escapes user-controlled values in invitation HTML', () => {
   assert.match(message.html, /a=1&amp;b=2/);
 });
 
-test('builds a default email application draft containing the invitation link', () => {
-  const draftUrl = buildInvitationEmailDraftUrl({
+test('builds browser-based webmail drafts containing the invitation', () => {
+  const drafts = buildInvitationWebmailDrafts({
     to: 'friend@example.com',
     inviterName: 'Alex Morgan',
     inviterEmail: 'alex@example.com',
@@ -41,12 +41,14 @@ test('builds a default email application draft containing the invitation link', 
     inviteLink: 'https://buyersync.onrender.com/invite/token',
     expiresAt: new Date('2026-09-11T00:00:00.000Z'),
   });
-  const draft = new URL(draftUrl);
 
-  assert.equal(draft.protocol, 'mailto:');
-  assert.equal(decodeURIComponent(draft.pathname), 'friend@example.com');
-  assert.match(draft.searchParams.get('subject') || '', /North Shore/);
-  assert.match(draft.searchParams.get('body') || '', /https:\/\/buyersync\.onrender\.com\/invite\/token/);
+  assert.deepEqual(drafts.map((draft) => draft.provider), ['Gmail', 'Outlook', 'Yahoo Mail']);
+  for (const draft of drafts) {
+    const url = new URL(draft.url);
+    assert.equal(url.protocol, 'https:');
+    assert.equal(url.searchParams.get('to'), 'friend@example.com');
+    assert.match(url.searchParams.get('body') || '', /https:\/\/buyersync\.onrender\.com\/invite\/token/);
+  }
 });
 
 test('reports that delivery is unavailable when SMTP is not configured', async () => {

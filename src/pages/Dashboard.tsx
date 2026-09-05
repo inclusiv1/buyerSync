@@ -401,6 +401,7 @@ const Dashboard = () => {
   const queryClient = useQueryClient();
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteEmailDraftUrl, setInviteEmailDraftUrl] = useState('');
+  const [inviteEmailAlternatives, setInviteEmailAlternatives] = useState<Array<{ provider: string; url: string }>>([]);
   const [inviteMessage, setInviteMessage] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [isSendingInvite, setIsSendingInvite] = useState(false);
@@ -483,6 +484,7 @@ const Dashboard = () => {
     setInviteError('');
     setInviteMessage('');
     setInviteEmailDraftUrl('');
+    setInviteEmailAlternatives([]);
     setIsSendingInvite(true);
     try {
       const { data } = await api.post('/invites', { email: inviteEmail, searchId: selectedSearchId });
@@ -491,8 +493,8 @@ const Dashboard = () => {
         setInviteEmail('');
       } else if (data.emailDraftUrl) {
         setInviteEmailDraftUrl(data.emailDraftUrl);
-        setInviteMessage('Your invitation is ready in your default email app. Review it and press Send.');
-        window.location.href = data.emailDraftUrl;
+        setInviteEmailAlternatives(data.emailDraftAlternatives || []);
+        setInviteMessage('Direct email delivery is not configured. Choose your webmail service to open the prepared invitation, then press Send.');
       }
     } catch (err: any) {
       setInviteError(err?.response?.data?.error || 'Could not create the invitation. Please try again.');
@@ -747,10 +749,16 @@ const Dashboard = () => {
               </div>
               <p className="text-xs text-muted-foreground">Sending as {user?.name} ({user?.email}). Replies will go to this email address.</p>
               {inviteMessage && <p className="text-sm text-primary" role="status">{inviteMessage}</p>}
-              {inviteEmailDraftUrl && (
-                <Button type="button" variant="outline" size="sm" onClick={() => { window.location.href = inviteEmailDraftUrl; }}>
-                  Open email app again
-                </Button>
+              {inviteEmailDraftUrl && inviteEmailAlternatives.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {inviteEmailAlternatives.map((draft) => (
+                    <Button key={draft.provider} type="button" variant="outline" size="sm" asChild>
+                      <a href={draft.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="mr-2 h-3.5 w-3.5" /> Open {draft.provider}
+                      </a>
+                    </Button>
+                  ))}
+                </div>
               )}
               {inviteError && <p className="text-sm text-red-600" role="alert">{inviteError}</p>}
             </CardContent>
