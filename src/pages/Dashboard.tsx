@@ -400,7 +400,7 @@ const Dashboard = () => {
   const { user, logout } = useAuthStore();
   const queryClient = useQueryClient();
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteLink, setInviteLink] = useState('');
+  const [inviteEmailDraftUrl, setInviteEmailDraftUrl] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [isSendingInvite, setIsSendingInvite] = useState(false);
@@ -482,15 +482,18 @@ const Dashboard = () => {
   const sendInvite = async () => {
     setInviteError('');
     setInviteMessage('');
-    setInviteLink('');
+    setInviteEmailDraftUrl('');
     setIsSendingInvite(true);
     try {
       const { data } = await api.post('/invites', { email: inviteEmail, searchId: selectedSearchId });
-      setInviteLink(data.inviteLink);
-      setInviteMessage(data.emailSent
-        ? `Invitation email sent to ${inviteEmail}.`
-        : 'The invitation was created, but email is not configured or delivery failed. Copy and share the link below.');
-      if (data.emailSent) setInviteEmail('');
+      if (data.emailSent) {
+        setInviteMessage(`Invitation email sent to ${inviteEmail}.`);
+        setInviteEmail('');
+      } else if (data.emailDraftUrl) {
+        setInviteEmailDraftUrl(data.emailDraftUrl);
+        setInviteMessage('Your invitation is ready in your default email app. Review it and press Send.');
+        window.location.href = data.emailDraftUrl;
+      }
     } catch (err: any) {
       setInviteError(err?.response?.data?.error || 'Could not create the invitation. Please try again.');
     } finally {
@@ -742,13 +745,14 @@ const Dashboard = () => {
                   <Mail className="h-4 w-4" /> {isSendingInvite ? 'Sending…' : 'Send email'}
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground">Sending as {user?.name} ({user?.email}). Replies will go to this email address.</p>
               {inviteMessage && <p className="text-sm text-primary" role="status">{inviteMessage}</p>}
-              {inviteError && <p className="text-sm text-red-600" role="alert">{inviteError}</p>}
-              {inviteLink && (
-                <div className="p-3 bg-slate-100 rounded text-xs break-all border">
-                  <strong>Invitation link:</strong> {inviteLink}
-                </div>
+              {inviteEmailDraftUrl && (
+                <Button type="button" variant="outline" size="sm" onClick={() => { window.location.href = inviteEmailDraftUrl; }}>
+                  Open email app again
+                </Button>
               )}
+              {inviteError && <p className="text-sm text-red-600" role="alert">{inviteError}</p>}
             </CardContent>
           </Card>
 

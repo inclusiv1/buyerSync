@@ -12,10 +12,11 @@ import { importListing, type ImportAttempt } from './services/listingImport';
 import { calculateScore } from './utils/scoring';
 import { buildDecisionResult } from './utils/decision';
 import { getLatestRates } from './services/mortgage';
-import { sendInvitationEmail } from './services/email';
+import { buildInvitationEmailDraftUrl, sendInvitationEmail } from './services/email';
 import { isTestMode, setupTestMode, testAccounts } from './testMode';
 import { adStatuses, isCampaignLive, parseCampaign, paymentStatuses, safeHttpsUrl } from './utils/advertising';
 import { detectAdCreativeExtension } from './utils/adCreativeUpload';
+import { getInvitationBaseUrl } from './utils/invitationUrl';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -26,6 +27,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 const importRequests = new Map<string, number[]>();
@@ -408,7 +410,7 @@ app.post('/api/invites', authenticate, async (req: any, res) => {
       where: { userId: req.userId, role: 'buyer', ...(searchId && { groupId: searchId }) },
       include: {
         group: { select: { name: true } },
-        user: { select: { name: true } },
+        user: { select: { name: true, email: true } },
       },
     });
 
@@ -429,13 +431,14 @@ app.post('/api/invites', authenticate, async (req: any, res) => {
       },
     });
 
-    const appUrl = (process.env.PUBLIC_APP_URL || 'http://localhost:5173').replace(/\/$/, '');
+    const appUrl = getInvitationBaseUrl(req);
     const inviteLink = `${appUrl}/invite/${token}`;
     let delivery;
     try {
       delivery = await sendInvitationEmail({
         to: email,
         inviterName: membership.user.name,
+        inviterEmail: membership.user.email,
         searchName: membership.group.name,
         inviteLink,
         expiresAt,
@@ -445,7 +448,16 @@ app.post('/api/invites', authenticate, async (req: any, res) => {
       delivery = { sent: false, reason: 'delivery_failed' };
     }
 
-    res.status(201).json({ invite, inviteLink, emailSent: delivery.sent, emailStatus: delivery.reason });
+    const emailDraftUrl = delivery.sent ? undefined : buildInvitationEmailDraftUrl({
+      to: email,
+      inviterName: membership.user.name,
+      inviterEmail: membership.user.email,
+      searchName: membership.group.name,
+      inviteLink,
+      expiresAt,
+    });
+
+    res.status(201).json({ invite, emailSent: delivery.sent, emailDraftUrl });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

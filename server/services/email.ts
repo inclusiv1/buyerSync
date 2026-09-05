@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 type InvitationEmail = {
   to: string;
   inviterName: string;
+  inviterEmail: string;
   searchName: string;
   inviteLink: string;
   expiresAt: Date;
@@ -21,7 +22,7 @@ const escapeHtml = (value: string) => value
   .replaceAll('"', '&quot;')
   .replaceAll("'", '&#039;');
 
-export const buildInvitationMessage = ({ inviterName, searchName, inviteLink, expiresAt }: Omit<InvitationEmail, 'to'>) => {
+export const buildInvitationMessage = ({ inviterName, inviterEmail, searchName, inviteLink, expiresAt }: Omit<InvitationEmail, 'to'>) => {
   const expiration = expiresAt.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -29,6 +30,7 @@ export const buildInvitationMessage = ({ inviterName, searchName, inviteLink, ex
     timeZone: 'UTC',
   });
   const safeInviter = escapeHtml(inviterName);
+  const safeInviterEmail = escapeHtml(inviterEmail);
   const safeSearch = escapeHtml(searchName);
   const safeLink = escapeHtml(inviteLink);
 
@@ -38,15 +40,20 @@ export const buildInvitationMessage = ({ inviterName, searchName, inviteLink, ex
     html: `
       <div style="font-family: Arial, sans-serif; color: #292929; line-height: 1.6; max-width: 600px; margin: 0 auto;">
         <h1 style="color: #34764f;">Join ${safeSearch}</h1>
-        <p><strong>${safeInviter}</strong> invited you to collaborate on a home search in Home Buyer Sync.</p>
+        <p><strong>${safeInviter}</strong> (${safeInviterEmail}) invited you to collaborate on a home search in Home Buyer Sync.</p>
         <p style="margin: 28px 0;">
           <a href="${safeLink}" style="background: #34764f; color: #ffffff; display: inline-block; padding: 12px 20px; text-decoration: none;">Accept invitation</a>
         </p>
-        <p>Or copy this link into your browser:<br><a href="${safeLink}">${safeLink}</a></p>
         <p style="color: #666666; font-size: 13px;">This invitation expires on ${expiration}. If you were not expecting it, you can ignore this email.</p>
       </div>
     `.trim(),
   };
+};
+
+export const buildInvitationEmailDraftUrl = (invitation: InvitationEmail) => {
+  const message = buildInvitationMessage(invitation);
+  const query = new URLSearchParams({ subject: message.subject, body: message.text });
+  return `mailto:${encodeURIComponent(invitation.to)}?${query.toString()}`;
 };
 
 export const sendInvitationEmail = async (invitation: InvitationEmail): Promise<EmailDeliveryResult> => {
@@ -69,6 +76,7 @@ export const sendInvitationEmail = async (invitation: InvitationEmail): Promise<
   const message = buildInvitationMessage(invitation);
   const result = await transporter.sendMail({
     from: process.env.SMTP_FROM?.trim() || 'Home Buyer Sync <no-reply@homebuyersync.local>',
+    replyTo: invitation.inviterEmail,
     to: invitation.to,
     ...message,
   });
