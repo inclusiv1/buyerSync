@@ -93,8 +93,14 @@ export async function createPropertyForGroup(db: Database, userId: string, input
   const membership = await resolveAcceptedMembership(db, userId, groupId);
   const data = propertyInputSchema.parse(input);
   const sourceUrl = data.sourceUrl || null;
-  if (sourceUrl) {
-    const existing = await db.property.findFirst({ where: { groupId: membership.groupId, sourceUrl } });
+  const duplicateIdentifiers = [
+    ...(sourceUrl ? [{ sourceUrl }] : []),
+    ...(data.mlsId ? [{ mlsId: data.mlsId }] : []),
+  ];
+  if (duplicateIdentifiers.length) {
+    const existing = await db.property.findFirst({
+      where: { groupId: membership.groupId, OR: duplicateIdentifiers },
+    });
     if (existing) return { property: existing, created: false, membership };
   }
   const property = await db.property.create({
@@ -138,6 +144,25 @@ export async function importListingForGroup(
   const listing = await importer(url);
   const saved = await createPropertyForGroup(db, userId, listing, membership.groupId);
   return { ...saved, listing };
+}
+
+export async function importSearchListingsForGroup(
+  db: Database,
+  userId: string,
+  listings: unknown[],
+  groupId?: string,
+) {
+  const membership = await resolveAcceptedMembership(db, userId, groupId);
+  requireBuyer(membership);
+  const parsed = z.array(propertyInputSchema).min(1).max(100).parse(listings);
+  const properties = [];
+  let imported = 0;
+  for (const listing of parsed) {
+    const result = await createPropertyForGroup(db, userId, listing, membership.groupId);
+    properties.push(result.property);
+    if (result.created) imported += 1;
+  }
+  return { membership, imported, duplicates: parsed.length - imported, properties };
 }
 
 export async function listChecklistRequirements(db: Database, userId: string, groupId?: string) {

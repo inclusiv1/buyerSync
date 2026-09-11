@@ -18,6 +18,7 @@ import { SearchCopilot } from '@/components/assistant/SearchCopilot';
 import WorkspaceHub from '@/components/workspace/WorkspaceHub';
 import ClientHeader from '@/components/navigation/ClientHeader';
 import type { ProductArea } from '@/components/navigation/ProductAreaTabs';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const getPrimaryPhoto = (photosData: any): string | null => {
   if (!photosData) return null;
@@ -516,7 +517,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="client-theme hearth-page min-h-screen bg-obsidian pb-16 text-foreground">
+    <div className="client-theme hearth-page min-h-screen pb-16 text-foreground">
       <ClientHeader active={workspaceArea} onAreaSelect={selectWorkspaceArea} />
 
       <div className="ad-dashboard-layout">
@@ -561,7 +562,7 @@ const Dashboard = () => {
           </DialogContent>
         </Dialog>
         <div
-          className="dashboard-hero flex flex-col justify-between gap-12 p-6 md:p-10 lg:p-12"
+          className="dashboard-hero theme-dark-surface flex flex-col justify-between gap-12 p-6 md:p-10 lg:p-12"
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=2000&q=88')" }}
         >
           <div className="flex items-center justify-between">
@@ -590,7 +591,7 @@ const Dashboard = () => {
               )}
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="gap-2 bg-white text-foreground hover:bg-white/90">
+                  <Button className="gap-2 bg-white text-slate-900 hover:bg-white/90 hover:text-slate-900">
                     <Plus className="w-4 h-4" /> Add a home <ArrowRight className="h-4 w-4" />
                   </Button>
                 </DialogTrigger>
@@ -776,7 +777,8 @@ const Dashboard = () => {
               </CardTitle>
               <CardDescription>Manage shared must-haves and weighted preferences.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              <ThemeToggle />
               <Button variant="outline" className="w-full" asChild>
                 <Link to="/checklist">Edit Criteria & Weights</Link>
               </Button>

@@ -40,6 +40,8 @@ export async function runAssistantTurn(
         maxOutputTokens: limits.maxOutputTokens,
       }, signal);
       if (!lastResponse.toolCalls.length) break;
+      messages.push({ role: 'assistant', content: lastResponse.content, toolCalls: lastResponse.toolCalls });
+      const toolResponses = [];
       for (const call of lastResponse.toolCalls) {
         if (++calls > limits.maxToolCalls) throw new Error('Assistant tool-call limit reached');
         const definition = executor.definitions().find(tool => tool.name === call.name);
@@ -49,13 +51,14 @@ export async function runAssistantTurn(
           const result = await executor.execute(call.name, call.arguments);
           summaries.push({ toolName: call.name, status: 'succeeded', isWrite: definition.isWrite, summary: result.summary });
           citations.push(...normalizeCitations(result.citations));
-          messages.push({ role: 'tool', content: `${call.name}: ${untrustedData(result.data)}` });
+          toolResponses.push({ id: call.id, name: call.name, output: untrustedData(result.data) });
         } catch (error: unknown) {
           const summary = error instanceof Error ? error.message : 'Tool failed';
           summaries.push({ toolName: call.name, status: 'failed', isWrite: definition.isWrite, summary });
-          messages.push({ role: 'tool', content: `${call.name} failed: ${untrustedData(summary)}` });
+          toolResponses.push({ id: call.id, name: call.name, output: `Tool failed: ${untrustedData(summary)}` });
         }
       }
+      messages.push({ role: 'tool', content: '', toolResponses });
     }
     const safeContent = enforceResponsePolicy(lastResponse?.content || 'I completed the available search actions.');
     return {
@@ -68,7 +71,9 @@ export async function runAssistantTurn(
       inputTokens: lastResponse?.inputTokens,
       outputTokens: lastResponse?.outputTokens,
     };
-  } catch {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown assistant error';
+    console.error('AI-assisted turn failed; using deterministic fallback:', message);
     return deterministicFallback(content, executor, writes < limits.maxWrites);
   }
 }

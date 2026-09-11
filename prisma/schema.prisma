@@ -361,17 +361,23 @@ model PropertyItemStatus {
 model SearchCriteria {
   id            String     @id @default(uuid())
   groupId       String     @unique
+  location      String?
+  radius        Float?
   minPrice      Float?
   maxPrice      Float?
   minBeds       Int?
   minBaths      Float?
   minSqft       Float?
+  maxSqft       Float?
   propertyTypes String? // JSON array
   yearBuiltMin  Int?
   yearBuiltMax  Int?
   lotSizeMin    Float?
+  lotSizeMax    Float?
   hoaMax        Float?
   schoolRating  Int?
+  status        String? // 'Active', 'Inactive'
+  daysOld       Int?
   group         BuyerGroup @relation(fields: [groupId], references: [id])
 }
 

@@ -65,7 +65,7 @@ export default function Comparison() {
   });
 
   return (
-    <div className="client-theme hearth-page min-h-screen bg-obsidian pb-16 text-foreground">
+    <div className="client-theme hearth-page min-h-screen pb-16 text-foreground">
       <ClientHeader active="decisions" />
       <main className="editorial-container space-y-8 py-10 md:py-16">
         <header className="border-b border-foreground/10 pb-10"><p className="hearth-eyebrow mb-4 flex items-center gap-2 text-violet-300"><GitCompareArrows className="h-4 w-4" /> 01 · Shared perspective</p><h1 className="font-sans text-4xl font-semibold tracking-[-0.045em] md:text-6xl">Compare shortlist</h1><p className="mt-4 text-muted-foreground">Model costs and test how changing priorities affects your shared ranking.</p></header>

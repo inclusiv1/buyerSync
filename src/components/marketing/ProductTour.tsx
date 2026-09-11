@@ -95,7 +95,7 @@ export default function ProductTour({ onClose }: { onClose?: () => void }) {
   const seek = (value: number) => { setElapsed(Math.max(0, Math.min(DURATION, value))); previousTime.current = null; };
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/15 bg-[#0d1018] shadow-2xl">
+    <div className="theme-dark-surface overflow-hidden rounded-3xl border border-white/15 bg-[#0d1018] shadow-2xl">
       <div className="flex h-12 items-center border-b border-white/[0.08] px-4">
         <BrandMark /><div className="mx-auto flex items-center gap-2 text-[0.58rem] uppercase tracking-[0.18em] text-white/35"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> 90-second product tour</div>
         {onClose && <button type="button" onClick={onClose} className="rounded-full p-2 text-white/45 transition hover:bg-white/10 hover:text-white" aria-label="Close product tour"><X className="h-4 w-4" /></button>}

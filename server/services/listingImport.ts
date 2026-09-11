@@ -130,19 +130,19 @@ export function normalizeProviderPayload(payload: unknown, sourceUrl?: string): 
     ?? (fullBaths !== undefined ? fullBaths + (halfBaths || 0) * 0.5 : undefined);
 
   return {
-    address: stringValue(firstValue(value.streetAddress, value.street_address, value.full_street_line, value.formatted_address, value.addressLine, value.address_line, value.street, address.streetAddress, address.line, typeof addressValue === 'string' ? addressValue : undefined)),
+    address: stringValue(firstValue(value.streetAddress, value.street_address, value.full_street_line, value.formattedAddress, value.formatted_address, value.addressLine, value.address_line, value.street, address.streetAddress, address.line, typeof addressValue === 'string' ? addressValue : undefined)),
     city: stringValue(firstValue(value.city, value.locality, address.city, address.addressLocality)),
     state: stringValue(firstValue(value.state, value.stateCode, value.state_code, address.state, address.addressRegion)),
-    zip: stringValue(firstValue(value.zip, value.zipcode, value.zip_code, value.postcode, value.postalCode, value.postal_code, address.zipcode, address.postalCode)),
+    zip: stringValue(firstValue(value.zip, value.zipCode, value.zipcode, value.zip_code, value.postcode, value.postalCode, value.postal_code, address.zipcode, address.postalCode)),
     price: numberValue(firstValue(value.price, value.listPrice, value.list_price)),
     beds: numberValue(firstValue(value.beds, value.bedrooms)),
     baths: bathrooms,
-    sqft: numberValue(firstValue(value.sqft, value.squareFeet, value.square_feet, value.livingArea, value.living_area)),
+    sqft: numberValue(firstValue(value.sqft, value.squareFeet, value.squareFootage, value.square_feet, value.livingArea, value.living_area)),
     yearBuilt: numberValue(firstValue(value.yearBuilt, value.year_built)),
     lotSize: numberValue(firstValue(value.lotSize, value.lot_size, value.lot_sqft, value.lotAcres, value.lot_acres)),
     propertyType: stringValue(firstValue(value.propertyType, value.property_type, value.style)),
     hoa: numberValue(firstValue(value.hoa, value.hoaFee, value.hoa_fee)),
-    mlsId: stringValue(firstValue(value.mlsId, value.mls_id, value.listing_id, value.mls)),
+    mlsId: stringValue(firstValue(value.mlsId, value.mls_id, value.listing_id, value.mls, value.id)),
     description: stringValue(firstValue(value.description, value.text)),
     photos: photos.length ? photos : undefined,
     latitude: numberValue(firstValue(value.latitude, value.lat)),

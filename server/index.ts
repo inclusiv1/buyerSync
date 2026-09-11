@@ -1265,7 +1265,10 @@ app.get('/api/properties/:id/score', authenticate, async (req: any, res) => {
 app.get('/api/search-criteria', authenticate, async (req: any, res) => {
   try {
     const { criteria } = await getSearchProfile(prisma, req.userId, getRequestedSearchId(req));
-    res.json(criteria);
+    const propertyTypes = typeof (criteria as any).propertyTypes === 'string'
+      ? JSON.parse((criteria as any).propertyTypes)
+      : (criteria as any).propertyTypes;
+    res.json({ ...criteria, propertyTypes });
   } catch (error: any) {
     res.status(error instanceof AssistantDomainError ? error.status : 400).json({ error: error.message });
   }
@@ -1276,7 +1279,10 @@ app.post('/api/search-criteria', authenticate, async (req: any, res) => {
     const patch = { ...req.body };
     delete patch.searchId;
     const { criteria } = await updateSearchProfile(prisma, req.userId, patch, getRequestedSearchId(req));
-    res.json(criteria);
+    const propertyTypes = typeof (criteria as any).propertyTypes === 'string'
+      ? JSON.parse((criteria as any).propertyTypes)
+      : (criteria as any).propertyTypes;
+    res.json({ ...criteria, propertyTypes });
   } catch (error: any) {
     res.status(error instanceof AssistantDomainError ? error.status : 400).json({ error: error.message });
   }

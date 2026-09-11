@@ -3,6 +3,12 @@ import type { Citation } from './contracts';
 export type AssistantMessageInput = {
   role: 'user' | 'assistant' | 'tool';
   content: string;
+  toolCalls?: AssistantToolCall[];
+  toolResponses?: Array<{
+    id: string;
+    name: string;
+    output: string;
+  }>;
 };
 
 export type AssistantToolDefinition = {
@@ -16,6 +22,7 @@ export type AssistantToolCall = {
   id: string;
   name: string;
   arguments: unknown;
+  thoughtSignature?: string;
 };
 
 export type AssistantProviderRequest = {

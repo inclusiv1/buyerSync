@@ -34,16 +34,16 @@ export default function ProductAreaTabs({ active, onSelect, compact = false, cla
             role="tab"
             aria-selected={selected}
             onClick={() => onSelect(area.id)}
-            className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border px-3 text-left transition duration-300 ${compact ? 'min-h-11 py-2' : 'min-h-[4.5rem] py-3'} ${selected ? 'border-champagne/30 bg-white/[0.09] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.07),0_12px_35px_-24px_rgba(216,197,143,.7)]' : 'border-transparent text-white/38 hover:border-white/10 hover:bg-white/[0.04] hover:text-white/70'}`}
+            className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border px-3 text-left transition duration-300 ${compact ? 'min-h-11 py-2' : 'min-h-[4.5rem] py-3'} ${selected ? 'border-primary/30 bg-primary/10 text-foreground shadow-sm' : 'border-transparent text-muted-foreground hover:border-foreground/15 hover:bg-accent hover:text-foreground'}`}
           >
-            <span className={`grid shrink-0 place-items-center rounded-lg transition ${compact ? 'h-7 w-7' : 'h-9 w-9'} ${selected ? 'bg-champagne/12 text-champagne' : 'bg-white/[0.04] text-white/35 group-hover:text-white/60'}`}>
+            <span className={`grid shrink-0 place-items-center rounded-lg transition ${compact ? 'h-7 w-7' : 'h-9 w-9'} ${selected ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground group-hover:text-foreground'}`}>
               <Icon className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
             </span>
             <span className="min-w-0">
               <span className="block text-[0.62rem] font-semibold uppercase tracking-[0.13em] sm:text-[0.68rem]">{area.label}</span>
-              {!compact && <span className="mt-1 hidden text-[0.55rem] text-white/28 lg:block">{area.number} · {area.description}</span>}
+              {!compact && <span className="mt-1 hidden text-[0.55rem] text-muted-foreground lg:block">{area.number} · {area.description}</span>}
             </span>
-            {selected && <span className="absolute inset-x-5 bottom-0 h-px bg-gradient-to-r from-transparent via-champagne to-transparent" />}
+            {selected && <span className="absolute inset-x-5 bottom-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />}
           </button>
         );
       })}

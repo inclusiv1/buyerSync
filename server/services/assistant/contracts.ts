@@ -7,18 +7,29 @@ const httpUrlSchema = z.string().url().max(2048).refine((value) => {
   return protocol === 'http:' || protocol === 'https:';
 }, 'URL must use HTTP or HTTPS');
 
+export const rentCastPropertyTypes = ['Single Family', 'Condo', 'Townhouse', 'Manufactured', 'Multi-Family', 'Apartment', 'Land'] as const;
+
 export const searchCriteriaPatchSchema = z.object({
+  location: z.string().trim().min(2).max(300).nullable().optional()
+    .describe('City and two-letter state abbreviation, ZIP code, or a street address, such as Smyrna, GA.'),
+  radius: boundedNullableNumber(100)
+    .describe('Search radius in miles from the location, up to 100. Requires an address or coordinates.'),
   minPrice: boundedNullableNumber(1_000_000_000),
   maxPrice: boundedNullableNumber(1_000_000_000),
   minBeds: boundedNullableInteger(100),
   minBaths: boundedNullableNumber(100),
   minSqft: boundedNullableNumber(10_000_000),
-  propertyTypes: z.array(z.string().trim().min(1).max(80)).max(20).nullable().optional(),
+  maxSqft: boundedNullableNumber(10_000_000),
+  propertyTypes: z.array(z.enum(rentCastPropertyTypes)).max(20).nullable().optional(),
   yearBuiltMin: boundedNullableInteger(3000),
   yearBuiltMax: boundedNullableInteger(3000),
   lotSizeMin: boundedNullableNumber(1_000_000_000),
+  lotSizeMax: boundedNullableNumber(1_000_000_000),
   hoaMax: boundedNullableNumber(10_000_000),
   schoolRating: boundedNullableInteger(10),
+  status: z.enum(['Active', 'Inactive']).nullable().optional(),
+  daysOld: boundedNullableInteger(3650)
+    .describe('Maximum number of days since the property was listed.'),
 }).strict();
 
 export type SearchCriteriaPatch = z.infer<typeof searchCriteriaPatchSchema>;

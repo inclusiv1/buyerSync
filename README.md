@@ -11,7 +11,7 @@ npm run dev:full
 ```
 
 Node.js 20.19 or newer is required.
-Python 3.9 or newer is also required for live listing search. The first `npm run dev:full` creates an ignored `.venv-homeharvest`, installs the pinned HomeHarvest package, and starts its local adapter on `127.0.0.1:4310` alongside Vite and Express.
+Set the server-only `RENTCAST_API_KEY` in `.env` to enable the primary live listing search. Python 3.9 or newer is required for the optional HomeHarvest fallback; the first `npm run dev:full` creates an ignored `.venv-homeharvest`, installs its pinned package, and starts the adapter on `127.0.0.1:4310` alongside Vite and Express.
 
 Run `npm run db:setup` after pulling schema changes. The repository test suite is available through `npm test`; production validation uses `npm test`, `npm run build`, and `npm run lint`.
 
@@ -23,14 +23,14 @@ Copy `.env.example` and set `GEMINI_API_KEY` to enable generated responses. The 
 
 Gemini is optional. If credentials are absent, quota is exhausted, the provider times out, or output is invalid, the same endpoint returns an explicit reduced-capability response using deterministic criteria parsing, checklist retrieval, saved-home ranking, and approved source links. Existing search, import, scoring, financing, and collaboration features continue to work.
 
-The MCP registry runs in process by default and exposes only the eight server-owned search tools documented in `AI_SEARCH_COPILOT_PLAN.md`. Local development starts the bundled HomeHarvest adapter configured by `HOMEHARVEST_SERVICE_URL`; production should deploy that adapter separately and point the variable at its private service URL. Listing imports retain the HTTPS host allowlist and SSRF checks described below. `MCP_REMOTE_ENDPOINT` and `MCP_AUTH_TOKEN` are placeholders for a separately implemented remote transport adapter; do not set `MCP_TRANSPORT=remote` until that adapter provides authenticated TLS and prevents browser access.
+The MCP registry runs in process by default and exposes only the eight server-owned search tools documented in `AI_SEARCH_COPILOT_PLAN.md`. Listing searches use RentCast when `RENTCAST_API_KEY` is configured, request up to 500 active listings, normalize and deduplicate the response, apply copilot filters, cache searches for five minutes, and return up to 100 matches. The bundled HomeHarvest adapter configured by `HOMEHARVEST_SERVICE_URL` remains an automatic fallback; production should deploy it separately. Listing imports retain the HTTPS host allowlist and SSRF checks described below. `MCP_REMOTE_ENDPOINT` and `MCP_AUTH_TOKEN` are placeholders for a separately implemented remote transport adapter; do not set `MCP_TRANSPORT=remote` until that adapter provides authenticated TLS and prevents browser access.
 
 Conversations and safe tool audit summaries are stored by buyer group. Provider secrets, authorization headers, raw provider payloads, private notes, and unrevealed co-buyer ratings are not stored or sent to Gemini. Public market claims require normalized source links and retrieval dates. Copilot output is educational and must not be treated as legal, financial, inspection, or fair-housing advice.
 
 Troubleshooting:
 
 - A **Reduced capability** notice means Gemini is unconfigured or unavailable; confirm `GEMINI_API_KEY`, quota, model access, and server logs without printing the key.
-- “Listing search service is not configured” means `HOMEHARVEST_SERVICE_URL` is blank. For local development, retain `http://127.0.0.1:4310` and confirm the `HomeHarvest adapter listening` startup message; saved-home ranking and other tools remain available if the provider is down.
+- “RentCast API key is not configured” means `RENTCAST_API_KEY` is blank and no fallback is available. Add the key only to the server environment; never use a `VITE_` prefix. If using HomeHarvest as fallback, retain `HOMEHARVEST_SERVICE_URL=http://127.0.0.1:4310` locally and confirm its adapter startup message.
 - Rate/tool/write limit errors are intentional safeguards. Wait for the rate window or narrow the request rather than increasing limits without a security and cost review.
 
 ## Invitation email

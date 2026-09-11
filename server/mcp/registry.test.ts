@@ -10,6 +10,7 @@ const membership = { id: 'member-1', groupId: 'group-1', userId: 'user-1', role:
 
 function fakeContext() {
   const runs: any[] = [];
+  const properties: any[] = [];
   const db = {
     assistantThread: { findFirst: async () => ({ id: 'thread-1', groupId: 'group-1' }) },
     assistantMessage: { findFirst: async () => ({ id: 'message-1', groupId: 'group-1', threadId: 'thread-1' }) },
@@ -24,11 +25,24 @@ function fakeContext() {
       findUnique: async () => ({ groupId: 'group-1', maxPrice: 500_000 }),
       upsert: async ({ update }: any) => ({ groupId: 'group-1', ...update }),
     },
+    property: {
+      findFirst: async ({ where }: any) => properties.find((property) => (
+        property.groupId === where.groupId && where.OR?.some((identifier: any) => (
+          (identifier.sourceUrl && identifier.sourceUrl === property.sourceUrl)
+          || (identifier.mlsId && identifier.mlsId === property.mlsId)
+        ))
+      )) || null,
+      create: async ({ data }: any) => {
+        const property = { id: `property-${properties.length + 1}`, ...data };
+        properties.push(property);
+        return property;
+      },
+    },
   } as unknown as PrismaClient;
   const context: McpExecutionContext = {
     db, userId: 'user-1', groupId: 'group-1', threadId: 'thread-1', messageId: 'message-1', turnId: 'turn-1',
   };
-  return { context, runs };
+  return { context, runs, properties };
 }
 
 test('exposes exactly the required MCP tools', () => {
@@ -59,9 +73,29 @@ test('all schemas reject identity and unknown fields and enforce bounds', () => 
     assert.equal(schema.safeParse({ userId: 'other-user' }).success, false);
     assert.equal(schema.safeParse({ groupId: 'other-group' }).success, false);
   }
-  assert.equal(toolInputSchemas.search_listings.safeParse({ location: 'Austin, TX', limit: 26 }).success, false);
+  assert.equal(toolInputSchemas.search_listings.safeParse({ location: 'Austin, TX', limit: 101 }).success, false);
   assert.equal(toolInputSchemas.import_listing.safeParse({ url: 'file:///etc/passwd' }).success, false);
+  assert.equal(toolInputSchemas.import_listing.safeParse({ url: 'https://www.zillow.com/home', listings: [{ address: '1 Main St' }] }).success, false);
+  assert.equal(toolInputSchemas.import_listing.safeParse({ listings: Array.from({ length: 101 }, (_, index) => ({ address: `${index} Main St` })) }).success, false);
   assert.equal(toolInputSchemas.rank_saved_properties.safeParse({ limit: 101 }).success, false);
+});
+
+test('imports a complete search-result batch in one write and skips MLS duplicates', async () => {
+  const { context, runs, properties } = fakeContext();
+  const registry = createMcpToolRegistry({ writeBudget: 1 });
+  const result = await registry.execute('import_listing', {
+    listings: [
+      { address: '1 Main St', city: 'Austin', state: 'TX', price: 450_000, mlsId: 'MLS-1' },
+      { address: '1 Main St', city: 'Austin', state: 'TX', price: 450_000, mlsId: 'MLS-1' },
+      { address: '2 Main St', city: 'Austin', state: 'TX', price: 475_000, mlsId: 'MLS-2' },
+    ],
+  }, context);
+
+  assert.equal((result.data as { imported: number }).imported, 2);
+  assert.equal((result.data as { duplicates: number }).duplicates, 1);
+  assert.equal(properties.length, 2);
+  assert.equal(runs.length, 1);
+  assert.equal(runs[0].isWrite, true);
 });
 
 test('audits execution safely and makes retries idempotent within a turn', async () => {

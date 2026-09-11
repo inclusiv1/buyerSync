@@ -17,7 +17,7 @@ export function normalizeCitations(value: unknown, retrievedAt = new Date()): Ci
 }
 
 export function citedClaimsOnly(content: string, citations: Citation[]): string {
-  const mentionsMarketFact = /\b(market|median|average|rate|trend|comparable|appreciat|inventory)\b/i.test(content);
+  const mentionsMarketFact = /\b(median (?:price|home price|sale price|rent)|average (?:price|home price|sale price|rent)|mortgage rate|interest rate|price appreciat\w*|market trend|year-over-year)\b/i.test(content);
   if (!mentionsMarketFact || citations.length > 0) return content;
   return 'I cannot support that market claim with an approved, dated source, so I have omitted it.';
 }

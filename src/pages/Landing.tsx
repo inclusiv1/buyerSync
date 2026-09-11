@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import BrandLogo from '@/components/BrandLogo';
 import InteractiveListingPreview from '@/components/marketing/InteractiveListingPreview';
 import ProductTour from '@/components/marketing/ProductTour';
+import { useThemeStore } from '@/store/useThemeStore';
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 28 },
@@ -27,16 +28,17 @@ const SpotlightCard = ({ children, className = '' }: { children: React.ReactNode
 
 const Landing = () => {
   const [demoOpen, setDemoOpen] = useState(false);
+  const theme = useThemeStore(state => state.theme);
 
   return (
-    <div className="hearth-page min-h-screen overflow-hidden bg-obsidian font-sans text-white">
+    <div className="hearth-page min-h-screen overflow-hidden font-sans text-foreground">
       <div className="hearth-grid pointer-events-none fixed inset-0 z-0 opacity-40" />
       <header className="fixed inset-x-0 top-4 z-50 px-4">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between rounded-2xl border border-white/10 bg-[#0d0f17]/70 px-4 shadow-glass backdrop-blur-2xl sm:px-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between rounded-2xl border border-foreground/10 bg-background/85 px-4 shadow-glass backdrop-blur-2xl sm:px-6">
           <Link to="/" aria-label="Home Buyer Sync home" className="group flex items-center">
-            <BrandLogo variant="on-dark" className="h-11 w-auto transition group-hover:scale-[1.02]" />
+            <BrandLogo variant={theme === 'dark' ? 'on-dark' : 'default'} className="h-11 w-auto transition group-hover:scale-[1.02]" />
           </Link>
-          <nav className="hidden items-center gap-7 text-xs font-medium text-white/55 md:flex" aria-label="Primary navigation">
+          <nav className="hidden items-center gap-7 text-xs font-medium text-muted-foreground md:flex" aria-label="Primary navigation">
             <a href="#platform" className="transition hover:text-white">How it works</a>
             <a href="#live-demo" className="transition hover:text-white">Live demo</a>
             <a href="#security" className="transition hover:text-white">Security</a>
@@ -44,11 +46,11 @@ const Landing = () => {
           <div className="flex items-center gap-2">
             <div className="mr-2 hidden items-center sm:flex" aria-label="Three co-buyers active now">
               <div className="flex -space-x-2">
-                {['D', 'M', 'A'].map((name, index) => <span key={name} className={`grid h-7 w-7 place-items-center rounded-full border-2 border-[#0d0f17] text-[0.55rem] font-bold ${index === 0 ? 'bg-violet-500' : index === 1 ? 'bg-cyan-400 text-black' : 'bg-emerald-400 text-black'}`}>{name}</span>)}
+                {['D', 'M', 'A'].map((name, index) => <span key={name} className={`grid h-7 w-7 place-items-center rounded-full border-2 border-background text-[0.55rem] font-bold ${index === 0 ? 'bg-violet-500 text-white' : index === 1 ? 'bg-cyan-400 text-black' : 'bg-emerald-400 text-black'}`}>{name}</span>)}
               </div>
               <span className="ml-2 h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" />
             </div>
-            <Link to="/login" className="hidden px-3 py-2 text-xs font-medium text-white/65 transition hover:text-white sm:block">Sign in</Link>
+            <Link to="/login" className="hidden px-3 py-2 text-xs font-medium text-muted-foreground transition hover:text-foreground sm:block">Sign in</Link>
             <Link to="/signup" className="rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-[#090a0f] transition hover:bg-champagne">Start syncing</Link>
           </div>
         </div>
@@ -130,7 +132,7 @@ const Landing = () => {
           </div>
         </section>
 
-        <section id="live-demo" className="relative border-y border-white/[0.07] bg-[#0c0e15] py-24 lg:py-32">
+        <section id="live-demo" className="relative border-y border-foreground/10 bg-card py-24 lg:py-32">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(52,211,153,0.07),transparent_45%)]" />
           <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-5 sm:px-8 lg:grid-cols-[0.72fr_1.28fr]">
             <motion.div initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.3 }} variants={fadeUp}>

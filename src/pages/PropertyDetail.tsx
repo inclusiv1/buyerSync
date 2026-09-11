@@ -276,7 +276,7 @@ const PropertyDetail = () => {
   };
 
   return (
-    <div className="client-theme hearth-page min-h-screen bg-obsidian pb-16 text-foreground">
+    <div className="client-theme hearth-page min-h-screen pb-16 text-foreground">
       <ClientHeader active="decisions" />
 
       <main className="editorial-container space-y-8 py-8 md:py-12">

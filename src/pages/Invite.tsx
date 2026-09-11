@@ -44,8 +44,8 @@ const Invite = () => {
     }
   };
 
-  if (error) return <div className="hearth-page grid min-h-screen place-items-center bg-obsidian p-8 text-center text-red-300">{error}</div>;
-  if (!inviteInfo) return <div className="hearth-page grid min-h-screen place-items-center bg-obsidian p-8 text-center text-white/55">Loading invitation…</div>;
+  if (error) return <div className="hearth-page grid min-h-screen place-items-center bg-background p-8 text-center text-red-700 dark:text-red-300">{error}</div>;
+  if (!inviteInfo) return <div className="hearth-page grid min-h-screen place-items-center bg-background p-8 text-center text-muted-foreground">Loading invitation…</div>;
 
   return (
     <AuthLayout

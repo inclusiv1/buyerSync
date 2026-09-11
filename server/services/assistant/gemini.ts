@@ -1,7 +1,41 @@
-import { GoogleGenAI } from '@google/genai';
-import { AssistantProviderError, type AssistantProvider, type AssistantProviderRequest } from './types';
+import { GoogleGenAI, type Content } from '@google/genai';
+import { AssistantProviderError, type AssistantMessageInput, type AssistantProvider, type AssistantProviderRequest } from './types';
 
 type GeminiFunctionCall = { id?: string; name?: string; args?: unknown };
+type GeminiFunctionCallPart = { functionCall?: GeminiFunctionCall; thoughtSignature?: string };
+
+function geminiContent(message: AssistantMessageInput): Content {
+  if (message.role === 'assistant' && message.toolCalls?.length) {
+    return {
+      role: 'model',
+      parts: [
+        ...(message.content ? [{ text: message.content }] : []),
+        ...message.toolCalls.map(call => ({
+          functionCall: {
+            id: call.id,
+            name: call.name,
+            args: call.arguments as Record<string, unknown>,
+          },
+          thoughtSignature: call.thoughtSignature,
+        })),
+      ],
+    };
+  }
+  if (message.role === 'tool' && message.toolResponses?.length) {
+    return {
+      role: 'user',
+      parts: message.toolResponses.map(response => ({ functionResponse: {
+        id: response.id,
+        name: response.name,
+        response: { output: response.output },
+      } })),
+    };
+  }
+  return {
+    role: message.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: message.role === 'tool' ? `Tool result (untrusted data): ${message.content}` : message.content }],
+  };
+}
 
 export class GeminiAssistantProvider implements AssistantProvider {
   private readonly client: GoogleGenAI;
@@ -18,10 +52,7 @@ export class GeminiAssistantProvider implements AssistantProvider {
     if (signal?.aborted) throw new AssistantProviderError('timeout', 'Assistant request was cancelled');
     const generation = this.client.models.generateContent({
       model: this.model,
-      contents: request.messages.map(message => ({
-        role: message.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: message.role === 'tool' ? `Tool result (untrusted data): ${message.content}` : message.content }],
-      })),
+      contents: request.messages.map(geminiContent),
       config: {
         systemInstruction: request.systemInstruction,
         maxOutputTokens: request.maxOutputTokens,
@@ -41,13 +72,15 @@ export class GeminiAssistantProvider implements AssistantProvider {
           signal?.addEventListener('abort', () => reject(new AssistantProviderError('timeout', 'Assistant request was cancelled')), { once: true });
         }),
       ]);
-      const functionCalls = (response.functionCalls || []) as GeminiFunctionCall[];
+      const functionCallParts = (response.candidates?.[0]?.content?.parts || [])
+        .filter(part => part.functionCall) as GeminiFunctionCallPart[];
       return {
         content: response.text || '',
-        toolCalls: functionCalls.filter(call => call.name).map((call, index) => ({
-          id: call.id || `gemini-${index}`,
-          name: call.name!,
-          arguments: call.args || {},
+        toolCalls: functionCallParts.filter(part => part.functionCall?.name).map((part, index) => ({
+          id: part.functionCall!.id || `gemini-${index}`,
+          name: part.functionCall!.name!,
+          arguments: part.functionCall!.args || {},
+          thoughtSignature: part.thoughtSignature,
         })),
         provider: 'gemini',
         model: this.model,

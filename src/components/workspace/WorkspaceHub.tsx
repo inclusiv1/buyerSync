@@ -58,13 +58,13 @@ export default function WorkspaceHub({ properties, contributors, rate, selectedI
   });
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#121520]/78 shadow-glass backdrop-blur-xl" aria-labelledby="workspace-heading">
+    <section className="overflow-hidden rounded-3xl border border-foreground/10 bg-card/80 shadow-glass backdrop-blur-xl" aria-labelledby="workspace-heading">
       <div className="flex flex-col gap-2 border-b border-foreground/10 px-5 py-5 md:flex-row md:items-end md:justify-between md:px-7">
         <div><p className="hearth-eyebrow text-champagne">Shared workspace</p><h2 id="workspace-heading" className="mt-2 font-sans text-3xl font-semibold tracking-[-0.035em]">One home-buying rhythm</h2></div>
         <p className="max-w-md text-xs leading-5 text-muted-foreground">Decide, model, tour, and coordinate without losing context between tools.</p>
       </div>
       <Tabs value={activeArea} onValueChange={value => onAreaChange(value as ProductArea)}>
-        <div className="border-b border-white/[0.07] bg-black/15 p-2 sm:p-3">
+        <div className="border-b border-foreground/10 bg-muted/45 p-2 sm:p-3">
           <ProductAreaTabs active={activeArea} onSelect={onAreaChange} />
         </div>
 

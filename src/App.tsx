@@ -13,6 +13,7 @@ import AdvertisingPortal from '@/pages/AdvertisingPortal';
 import Landing from '@/pages/Landing';
 import Disclaimer from '@/pages/Disclaimer';
 import SiteFooter from '@/components/SiteFooter';
+import ThemeToggle from '@/components/ThemeToggle';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
 import { isTestMode } from '@/lib/authStorage';
@@ -77,6 +78,7 @@ const App = () => {
           <Route path="/checklist" element={<ProtectedRoute><Checklist /></ProtectedRoute>} />
           <Route path="/compare" element={<ProtectedRoute><Comparison /></ProtectedRoute>} />
         </Routes>
+        <ThemeToggle floating />
         <SiteFooter />
       </BrowserRouter>
     </QueryClientProvider>

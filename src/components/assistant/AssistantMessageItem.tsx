@@ -72,7 +72,7 @@ export function AssistantMessageItem({ message, reducedCapability = false }: { m
         {(reducedCapability || message.provider?.toLowerCase().includes('fallback')) && (
           <div className="mt-4 flex gap-2 border border-amber-700/20 bg-amber-50 p-3 text-sm text-amber-950" role="status">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <span><strong>Reduced capability.</strong> The AI provider was unavailable, so this response used supported deterministic search tools.</span>
+            <span><strong>Reduced capability.</strong> AI-assisted interpretation could not complete, so this response used supported deterministic search tools.</span>
           </div>
         )}
 

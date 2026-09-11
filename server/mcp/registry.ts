@@ -5,6 +5,7 @@ import {
   getSearchProfile,
   getVisiblePropertyDecision,
   importListingForGroup,
+  importSearchListingsForGroup,
   listChecklistRequirements,
   rankSavedProperties,
   resolveAcceptedMembership,
@@ -12,7 +13,7 @@ import {
 } from '../services/assistant/domain';
 import { citationSchema } from '../services/assistant/contracts';
 import { getLatestRates } from '../services/mortgage';
-import { normalizeProviderPayload } from '../services/listingImport';
+import { searchPublicListings } from '../services/listingSearch';
 import { toolInputSchemas, type ToolName } from './schemas';
 
 export const MCP_TOOL_NAMES = Object.freeze(Object.keys(toolInputSchemas) as ToolName[]);
@@ -87,31 +88,7 @@ function summarizeOutput(data: unknown): string {
 }
 
 async function defaultSearchListings(input: SearchInput): Promise<unknown[]> {
-  const baseUrl = process.env.HOMEHARVEST_SERVICE_URL;
-  if (!baseUrl) throw new Error('Listing search service is not configured');
-  const serviceUrl = new URL(process.env.HOMEHARVEST_SEARCH_PATH || '/search', baseUrl);
-  if (!['http:', 'https:'].includes(serviceUrl.protocol)) throw new Error('Listing search service must use HTTP or HTTPS');
-  const response = await fetch(serviceUrl, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      location: input.location,
-      listing_type: 'for_sale',
-      limit: input.limit,
-      min_price: input.minPrice,
-      max_price: input.maxPrice,
-      min_beds: input.minBeds,
-      min_baths: input.minBaths,
-      property_type: input.propertyType,
-    }),
-    signal: AbortSignal.timeout(Number(process.env.HOMEHARVEST_TIMEOUT_MS || 30_000)),
-  });
-  if (!response.ok) throw new Error(`Listing search service returned ${response.status}`);
-  const payload = await response.json() as unknown;
-  const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
-  const results = Array.isArray(payload) ? payload : (record.data ?? record.results ?? record.listings);
-  if (!Array.isArray(results)) throw new Error('Listing search service returned an invalid response');
-  return results.slice(0, input.limit).map((listing) => normalizeProviderPayload(listing));
+  return searchPublicListings(input);
 }
 
 function normalizedMarketContext(rates: RateSnapshot[]) {
@@ -163,8 +140,12 @@ export function createMcpToolRegistry(options: McpRegistryOptions = {}) {
       },
     },
     import_listing: {
-      description: 'Import an allowlisted listing URL into the current buyer group.', isWrite: true,
-      execute: async (input, context) => ({ data: await importListingForGroup(context.db, context.userId, input.url, context.groupId) }),
+      description: 'Save either one allowlisted listing URL or up to 100 exact listings returned by search_listings into the current buyer group. Use listings to save a full search batch in one call.', isWrite: true,
+      execute: async (input, context) => ({
+        data: input.url
+          ? await importListingForGroup(context.db, context.userId, input.url, context.groupId)
+          : await importSearchListingsForGroup(context.db, context.userId, input.listings, context.groupId),
+      }),
     },
     rank_saved_properties: {
       description: 'Rank saved properties using checklist and visible collaborative scores.', isWrite: false,

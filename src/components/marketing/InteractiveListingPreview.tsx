@@ -35,7 +35,7 @@ const InteractiveListingPreview = ({ compact = false }: InteractiveListingPrevie
       initial={{ opacity: 0, y: 24, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.7, delay: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-      className={`relative mx-auto w-full overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#10131d]/90 shadow-[0_40px_120px_-35px_rgba(0,0,0,0.95)] backdrop-blur-2xl ${compact ? 'max-w-xl' : 'max-w-2xl'}`}
+      className={`theme-dark-surface relative mx-auto w-full overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#10131d]/90 shadow-[0_40px_120px_-35px_rgba(0,0,0,0.95)] backdrop-blur-2xl ${compact ? 'max-w-xl' : 'max-w-2xl'}`}
     >
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5">
         <div className="flex items-center gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-white/50">
