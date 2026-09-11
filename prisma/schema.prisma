@@ -31,6 +31,9 @@ model User {
   inspections         WalkthroughInspection[]
   agentComments       AgentComment[]
   adCampaigns         AdCampaign[]
+  assistantThreads    AssistantThread[]
+  assistantMessages   AssistantMessage[]
+  assistantToolRuns   AssistantToolRun[]
 }
 
 model AdCampaign {
@@ -69,6 +72,9 @@ model BuyerGroup {
   checklistItems   ChecklistItem[]
   searchCriteria   SearchCriteria?
   decisionCriteria DecisionCriterion[]
+  assistantThreads AssistantThread[]
+  assistantMessages AssistantMessage[]
+  assistantToolRuns AssistantToolRun[]
 
   @@unique([primaryBuyerId, name])
 }
@@ -138,6 +144,81 @@ model Property {
   capexItems          CapExItem[]
   inspections         WalkthroughInspection[]
   agentComments       AgentComment[]
+}
+
+model AssistantThread {
+  id            String                 @id @default(uuid())
+  groupId       String
+  createdById   String
+  title         String?
+  status        String                 @default("active") // 'active', 'archived'
+  lastMessageAt DateTime               @default(now())
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  group         BuyerGroup             @relation(fields: [groupId], references: [id])
+  createdBy     User                   @relation(fields: [createdById], references: [id])
+  messages      AssistantMessage[]
+  toolRuns      AssistantToolRun[]
+
+  @@index([groupId, lastMessageAt, id])
+  @@index([createdById])
+}
+
+model AssistantMessage {
+  id            String                 @id @default(uuid())
+  groupId       String
+  threadId      String
+  requestKey    String?
+  authorId      String?
+  role          String // 'user', 'assistant', 'system', 'tool'
+  content       String
+  status        String                 @default("completed") // 'pending', 'completed', 'failed', 'cancelled'
+  citations     String                 @default("[]") // JSON array of normalized citations
+  toolSummaries String                 @default("[]") // JSON array of safe tool summaries
+  provider      String?
+  model         String?
+  inputTokens   Int?
+  outputTokens  Int?
+  totalTokens   Int?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  group         BuyerGroup             @relation(fields: [groupId], references: [id])
+  thread        AssistantThread        @relation(fields: [threadId], references: [id])
+  author        User?                  @relation(fields: [authorId], references: [id])
+  toolRuns      AssistantToolRun[]
+
+  @@index([threadId, createdAt, id])
+  @@index([groupId, createdAt, id])
+  @@index([authorId])
+}
+
+model AssistantToolRun {
+  id             String            @id @default(uuid())
+  groupId        String
+  threadId       String
+  messageId      String?
+  invokedById    String
+  toolName       String
+  isWrite        Boolean           @default(false)
+  status         String            @default("pending") // 'pending', 'running', 'succeeded', 'failed', 'cancelled'
+  idempotencyKey String?
+  inputSummary   String?
+  outputSummary  String?
+  errorCategory  String?
+  errorMessage   String?
+  startedAt      DateTime          @default(now())
+  completedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  group          BuyerGroup        @relation(fields: [groupId], references: [id])
+  thread         AssistantThread   @relation(fields: [threadId], references: [id])
+  message        AssistantMessage? @relation(fields: [messageId], references: [id])
+  invokedBy      User              @relation(fields: [invokedById], references: [id])
+
+  @@unique([groupId, idempotencyKey])
+  @@index([threadId, createdAt, id])
+  @@index([messageId])
+  @@index([invokedById])
 }
 
 model DecisionCriterion {

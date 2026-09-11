@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, GitCompareArrows } from 'lucide-react';
+import { GitCompareArrows } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ComparativeDecisionMatrix, type ComparisonEntry } from '@/components/decision/ComparativeDecisionMatrix';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import type { Listing, ScoreResult } from '@/domain/models';
 import api from '@/lib/api';
 import { decisionApi } from '@/services/decisionApi';
+import ClientHeader from '@/components/navigation/ClientHeader';
 
 interface ApiProperty {
   id: string;
@@ -64,10 +65,10 @@ export default function Comparison() {
   });
 
   return (
-    <div className="editorial-shell pb-16">
-      <nav className="editorial-nav"><div className="editorial-container flex h-20 items-center"><Button variant="ghost" asChild><Link to="/"><ChevronLeft /> Back to search</Link></Button></div></nav>
+    <div className="client-theme hearth-page min-h-screen bg-obsidian pb-16 text-foreground">
+      <ClientHeader active="decisions" />
       <main className="editorial-container space-y-8 py-10 md:py-16">
-        <header className="border-b border-foreground/10 pb-10"><p className="eyebrow mb-4 flex items-center gap-2"><GitCompareArrows className="h-4 w-4" /> Shared perspective</p><h1 className="display-title">Compare shortlist</h1><p className="mt-4 text-muted-foreground">Model costs and test how changing priorities affects your shared ranking.</p></header>
+        <header className="border-b border-foreground/10 pb-10"><p className="hearth-eyebrow mb-4 flex items-center gap-2 text-violet-300"><GitCompareArrows className="h-4 w-4" /> 01 · Shared perspective</p><h1 className="font-sans text-4xl font-semibold tracking-[-0.045em] md:text-6xl">Compare shortlist</h1><p className="mt-4 text-muted-foreground">Model costs and test how changing priorities affects your shared ranking.</p></header>
         {selectedIds.length < 2 ? (
           <Card className="p-10 text-center"><p className="font-semibold">Choose 2–4 homes from the dashboard to compare.</p><Button className="mt-4" asChild><Link to="/">Choose homes</Link></Button></Card>
         ) : comparisonQuery.isLoading || criteriaQuery.isLoading ? (

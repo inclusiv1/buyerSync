@@ -17,6 +17,14 @@ import { isTestMode, setupTestMode, testAccounts } from './testMode';
 import { adStatuses, isCampaignLive, parseCampaign, paymentStatuses, safeHttpsUrl } from './utils/advertising';
 import { detectAdCreativeExtension } from './utils/adCreativeUpload';
 import { getInvitationBaseUrl } from './utils/invitationUrl';
+import { isUniqueSignupConflict, parseBuyerSignupInput, SignupInputError } from './utils/signup';
+import { createAssistantRouter } from './routes/assistant';
+import {
+  AssistantDomainError,
+  createPropertyForGroup,
+  getSearchProfile,
+  updateSearchProfile,
+} from './services/assistant/domain';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -70,47 +78,42 @@ if (process.env.NODE_ENV === 'production') {
 // Auth Routes
 app.post('/api/auth/signup', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password } = parseBuyerSignupInput(req.body);
     const hashedPassword = await bcrypt.hash(password, 10);
-    const slug = email.split('@')[0] + '-' + Math.random().toString(36).substring(2, 7);
-
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash: hashedPassword,
-        role: 'primary_buyer',
-        profileSlug: slug,
-      },
-    });
-
-    if (user.role === 'primary_buyer') {
-      const group = await prisma.buyerGroup.create({
+    const user = await prisma.$transaction(async (transaction) => {
+      const createdUser = await transaction.user.create({
+        data: {
+          name,
+          email,
+          passwordHash: hashedPassword,
+          role: 'primary_buyer',
+          profileSlug: `buyer-${crypto.randomUUID()}`,
+        },
+      });
+      await transaction.buyerGroup.create({
         data: {
           name: `${name}'s Home Search`,
-          primaryBuyerId: user.id,
+          primaryBuyerId: createdUser.id,
           memberships: {
             create: {
-              userId: user.id,
+              userId: createdUser.id,
               role: 'buyer',
               status: 'accepted',
             },
           },
+          searchCriteria: { create: {} },
         },
       });
-
-      // Initialize search criteria for the group
-      await prisma.searchCriteria.create({
-        data: {
-          groupId: group.id
-        }
-      });
-    }
+      return createdUser;
+    });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET);
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  } catch (error: unknown) {
+    if (error instanceof SignupInputError) return res.status(400).json({ error: error.message });
+    if (isUniqueSignupConflict(error)) return res.status(409).json({ error: 'An account with that email already exists. Sign in instead.' });
+    console.error('Buyer signup failed', error);
+    res.status(500).json({ error: 'We could not create your account. Please try again.' });
   }
 });
 
@@ -139,7 +142,8 @@ app.post('/api/auth/advertiser-signup', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -187,6 +191,8 @@ const authenticate = (req: any, res: any, next: any) => {
     return res.status(401).json({ error: 'Your session is invalid or has expired' });
   }
 };
+
+app.use('/api/assistant', authenticate, createAssistantRouter(prisma));
 
 const findMembership = (userId: string, groupId?: string) => prisma.groupMembership.findFirst({
   where: { userId, status: 'accepted', ...(groupId && { groupId }) }
@@ -557,62 +563,10 @@ app.post('/api/properties/parse-text', authenticate, async (req: any, res) => {
 // Property Routes
 app.post('/api/properties', authenticate, async (req: any, res) => {
   try {
-    const {
-      address, city, state, zip, price, beds, baths, sqft,
-      yearBuilt, lotSize, propertyType, hoa, mlsId,
-      photos, description, sourceUrl, latitude, longitude, pros, cons
-    } = req.body;
-    const membership = await findMembership(req.userId, getRequestedSearchId(req));
-    if (!membership) return res.status(403).json({ error: 'No group membership found' });
-
-    let photosJson: string | null = null;
-    if (photos) {
-      if (typeof photos === 'string') {
-        photosJson = photos;
-      } else if (Array.isArray(photos)) {
-        photosJson = JSON.stringify(photos);
-      }
-    }
-
-    const serializeList = (value: unknown) => JSON.stringify(
-      Array.isArray(value) ? value.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean) : []
-    );
-
-    const parseNum = (val: any) => {
-      if (val === undefined || val === null || val === '') return null;
-      const num = Number(val);
-      return isNaN(num) ? null : num;
-    };
-
-    const property = await prisma.property.create({
-      data: {
-        groupId: membership.groupId,
-        address: address || 'Unknown Address',
-        city: city || '',
-        state: state || '',
-        zip: zip || '',
-        lat: parseNum(latitude),
-        lng: parseNum(longitude),
-        price: parseNum(price),
-        beds: parseNum(beds) !== null ? Math.round(Number(beds)) : null,
-        baths: parseNum(baths),
-        sqft: parseNum(sqft),
-        yearBuilt: parseNum(yearBuilt) !== null ? Math.round(Number(yearBuilt)) : null,
-        lotSize: parseNum(lotSize),
-        propertyType: propertyType || null,
-        hoa: parseNum(hoa),
-        mlsId: mlsId || null,
-        photos: photosJson,
-        description: description || null,
-        pros: serializeList(pros),
-        cons: serializeList(cons),
-        sourceUrl: sourceUrl || null,
-        addedById: req.userId,
-      }
-    });
+    const { property } = await createPropertyForGroup(prisma, req.userId, req.body, getRequestedSearchId(req));
     res.json({ ...property, pros: JSON.parse(property.pros), cons: JSON.parse(property.cons) });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(error instanceof AssistantDomainError ? error.status : 400).json({ error: error.message });
   }
 });
 
@@ -745,14 +699,18 @@ app.get('/api/properties', authenticate, async (req: any, res) => {
   });
 
   const propertyIds = properties.map(property => property.id);
-  const [buyers, submissions, ratings, decisionCriteria] = await Promise.all([
+  const [buyers, submissions, ratings, decisionCriteria, checklistItems, userWeights, itemStatuses, searchCriteria] = await Promise.all([
     prisma.groupMembership.findMany({
       where: { groupId: membership.groupId, status: 'accepted', role: { in: ['buyer', 'co_buyer'] } },
       include: { user: true }
     }),
     prisma.decisionSubmission.findMany({ where: { propertyId: { in: propertyIds } } }),
     prisma.criterionRating.findMany({ where: { propertyId: { in: propertyIds } } }),
-    prisma.decisionCriterion.findMany({ where: { groupId: membership.groupId } })
+    prisma.decisionCriterion.findMany({ where: { groupId: membership.groupId } }),
+    prisma.checklistItem.findMany({ where: { groupId: membership.groupId } }),
+    prisma.userItemWeight.findMany({ where: { userId: req.userId, item: { groupId: membership.groupId } } }),
+    prisma.propertyItemStatus.findMany({ where: { checkedByUserId: req.userId, propertyId: { in: propertyIds } } }),
+    prisma.searchCriteria.findUnique({ where: { groupId: membership.groupId } }),
   ]);
   const raterDetails = buyers.map(buyer => ({
     userId: buyer.userId,
@@ -765,6 +723,13 @@ app.get('/api/properties', authenticate, async (req: any, res) => {
     scaleMax: criterion.scaleMax as 5 | 10,
   }));
   const propertiesWithScores = properties.map(property => {
+    const automaticAssessment = calculateScore(
+      checklistItems,
+      userWeights,
+      itemStatuses.filter(status => status.propertyId === property.id),
+      searchCriteria,
+      property,
+    );
     const scoreResult = buildDecisionResult(
       raterDetails,
       submissions.filter(submission => submission.propertyId === property.id).map(submission => submission.userId),
@@ -783,9 +748,10 @@ app.get('/api/properties', authenticate, async (req: any, res) => {
       ...property,
       pros: parseList(property.pros),
       cons: parseList(property.cons),
-      score: scoreResult.compositeScore,
-      hasVeto: scoreResult.hasVeto,
-      scoreResult
+      score: scoreResult.compositeScore ?? (automaticAssessment.hasCriteria ? automaticAssessment.score : null),
+      hasVeto: scoreResult.hasVeto || automaticAssessment.mustHaveGaps > 0,
+      scoreResult,
+      automaticAssessment,
     };
   });
 
@@ -1023,7 +989,7 @@ app.delete('/api/decision/criteria/:id', authenticate, async (req: any, res) => 
 const getDecision = async (propertyId: string, userId: string) => {
   const access = await findAccessibleProperty(propertyId, userId);
   if (!access) return null;
-  const [buyers, submissions, ratings, criteria, capExItems, inspections, agentComments] = await Promise.all([
+  const [buyers, submissions, ratings, criteria, capExItems, inspections, agentComments, checklistItems, userWeights, itemStatuses, searchCriteria] = await Promise.all([
     prisma.groupMembership.findMany({
       where: { groupId: access.property.groupId, status: 'accepted', role: { in: ['buyer', 'co_buyer'] } },
       include: { user: true }
@@ -1034,6 +1000,10 @@ const getDecision = async (propertyId: string, userId: string) => {
     prisma.capExItem.findMany({ where: { propertyId }, orderBy: { createdAt: 'asc' } }),
     prisma.walkthroughInspection.findMany({ where: { propertyId }, include: { author: true }, orderBy: { inspectedAt: 'desc' } }),
     prisma.agentComment.findMany({ where: { propertyId }, orderBy: { createdAt: 'desc' } }),
+    prisma.checklistItem.findMany({ where: { groupId: access.property.groupId } }),
+    prisma.userItemWeight.findMany({ where: { userId, item: { groupId: access.property.groupId } } }),
+    prisma.propertyItemStatus.findMany({ where: { propertyId, checkedByUserId: userId } }),
+    prisma.searchCriteria.findUnique({ where: { groupId: access.property.groupId } }),
   ]);
   const raterDetails = buyers.map(buyer => ({
     userId: buyer.userId,
@@ -1050,6 +1020,7 @@ const getDecision = async (propertyId: string, userId: string) => {
   const raterIds = new Set(raterDetails.map(rater => rater.userId));
   return {
     scoreResult,
+    automaticAssessment: calculateScore(checklistItems, userWeights, itemStatuses, searchCriteria, access.property),
     submissions: submissions.filter(submission => raterIds.has(submission.userId)).map(submission => {
       const rater = raterDetails.find(buyer => buyer.userId === submission.userId)!;
       const visible = scoreResult.revealed || submission.userId === userId;
@@ -1292,34 +1263,57 @@ app.get('/api/properties/:id/score', authenticate, async (req: any, res) => {
 });
 
 app.get('/api/search-criteria', authenticate, async (req: any, res) => {
-  const membership = await prisma.groupMembership.findFirst({
-    where: { userId: req.userId }
-  });
-  if (!membership) return res.status(403).json({ error: 'No group found' });
-
-  const criteria = await prisma.searchCriteria.findUnique({
-    where: { groupId: membership.groupId }
-  });
-  res.json(criteria || {});
+  try {
+    const { criteria } = await getSearchProfile(prisma, req.userId, getRequestedSearchId(req));
+    res.json(criteria);
+  } catch (error: any) {
+    res.status(error instanceof AssistantDomainError ? error.status : 400).json({ error: error.message });
+  }
 });
 
 app.post('/api/search-criteria', authenticate, async (req: any, res) => {
   try {
-    const membership = await prisma.groupMembership.findFirst({
-      where: { userId: req.userId, role: { in: ['buyer', 'co_buyer'] } }
-    });
-    if (!membership) return res.status(403).json({ error: 'Only buyers can update criteria' });
-
-    const criteria = await prisma.searchCriteria.upsert({
-      where: { groupId: membership.groupId },
-      update: req.body,
-      create: { ...req.body, groupId: membership.groupId }
-    });
+    const patch = { ...req.body };
+    delete patch.searchId;
+    const { criteria } = await updateSearchProfile(prisma, req.userId, patch, getRequestedSearchId(req));
     res.json(criteria);
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(error instanceof AssistantDomainError ? error.status : 400).json({ error: error.message });
   }
 });
+
+let httpServer: ReturnType<typeof app.listen> | undefined;
+let shuttingDown = false;
+
+const shutdown = (signal: NodeJS.Signals) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`Received ${signal}; shutting down server`);
+
+  const forceExit = setTimeout(() => {
+    console.error('Server shutdown timed out; forcing exit');
+    process.exit(1);
+  }, 5_000);
+  forceExit.unref();
+
+  const finish = async () => {
+    await prisma.$disconnect();
+    process.exit(0);
+  };
+
+  if (httpServer) {
+    httpServer.close((error) => {
+      if (error) console.error('Unable to close HTTP server cleanly', error);
+      void finish();
+    });
+    return;
+  }
+
+  void finish();
+};
+
+process.once('SIGINT', () => shutdown('SIGINT'));
+process.once('SIGTERM', () => shutdown('SIGTERM'));
 
 const startServer = async () => {
   assertGeneratedClientIsCurrent();
@@ -1327,8 +1321,14 @@ const startServer = async () => {
     await setupTestMode();
     console.log('Test mode enabled with three collaborative users');
   }
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  await new Promise<void>((resolve, reject) => {
+    const handleError = (error: Error) => reject(error);
+    httpServer = app.listen(PORT, () => {
+      httpServer?.off('error', handleError);
+      console.log(`Server running on http://localhost:${PORT}`);
+      resolve();
+    });
+    httpServer.once('error', handleError);
   });
 };
 

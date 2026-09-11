@@ -11,6 +11,27 @@ npm run dev:full
 ```
 
 Node.js 20.19 or newer is required.
+Python 3.9 or newer is also required for live listing search. The first `npm run dev:full` creates an ignored `.venv-homeharvest`, installs the pinned HomeHarvest package, and starts its local adapter on `127.0.0.1:4310` alongside Vite and Express.
+
+Run `npm run db:setup` after pulling schema changes. The repository test suite is available through `npm test`; production validation uses `npm test`, `npm run build`, and `npm run lint`.
+
+## AI Search Copilot
+
+The dashboard includes a shared Search Copilot for each named buyer search. Accepted group members can resume persisted conversations, ask for homes in natural language, review dated public citations, and see every tool action. Authorized buyers and co-buyers may have supported search-criteria changes and approved listing imports applied automatically; the normal criteria and listing controls remain the way to inspect, edit, or reverse those changes.
+
+Copy `.env.example` and set `GEMINI_API_KEY` to enable generated responses. The key and model configuration are read only by Express and must never be exposed through a `VITE_` variable. `GEMINI_MODEL`, `ASSISTANT_TIMEOUT_MS`, `ASSISTANT_MAX_OUTPUT_TOKENS`, `ASSISTANT_MAX_TOOL_CALLS`, `ASSISTANT_MAX_WRITES_PER_TURN`, and `ASSISTANT_RATE_LIMIT_PER_MINUTE` bound cost and automatic work. The default low-cost model is configurable because Gemini availability and model names can vary by account and region.
+
+Gemini is optional. If credentials are absent, quota is exhausted, the provider times out, or output is invalid, the same endpoint returns an explicit reduced-capability response using deterministic criteria parsing, checklist retrieval, saved-home ranking, and approved source links. Existing search, import, scoring, financing, and collaboration features continue to work.
+
+The MCP registry runs in process by default and exposes only the eight server-owned search tools documented in `AI_SEARCH_COPILOT_PLAN.md`. Local development starts the bundled HomeHarvest adapter configured by `HOMEHARVEST_SERVICE_URL`; production should deploy that adapter separately and point the variable at its private service URL. Listing imports retain the HTTPS host allowlist and SSRF checks described below. `MCP_REMOTE_ENDPOINT` and `MCP_AUTH_TOKEN` are placeholders for a separately implemented remote transport adapter; do not set `MCP_TRANSPORT=remote` until that adapter provides authenticated TLS and prevents browser access.
+
+Conversations and safe tool audit summaries are stored by buyer group. Provider secrets, authorization headers, raw provider payloads, private notes, and unrevealed co-buyer ratings are not stored or sent to Gemini. Public market claims require normalized source links and retrieval dates. Copilot output is educational and must not be treated as legal, financial, inspection, or fair-housing advice.
+
+Troubleshooting:
+
+- A **Reduced capability** notice means Gemini is unconfigured or unavailable; confirm `GEMINI_API_KEY`, quota, model access, and server logs without printing the key.
+- “Listing search service is not configured” means `HOMEHARVEST_SERVICE_URL` is blank. For local development, retain `http://127.0.0.1:4310` and confirm the `HomeHarvest adapter listening` startup message; saved-home ranking and other tools remain available if the provider is down.
+- Rate/tool/write limit errors are intentional safeguards. Wait for the rate window or narrow the request rather than increasing limits without a security and cost review.
 
 ## Invitation email
 

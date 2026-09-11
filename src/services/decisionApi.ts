@@ -3,6 +3,20 @@ import type { CapExItem, Criterion, ScoreResult, ScoreSubmission, WalkthroughIns
 
 export interface PropertyDecisionData {
   scoreResult: ScoreResult;
+  automaticAssessment: {
+    score: number;
+    mustHaveGaps: number;
+    hasCriteria: boolean;
+    assessments: Array<{
+      key: string;
+      label: string;
+      status: 'met' | 'gap' | 'unknown';
+      met: boolean;
+      actual: number | string | null;
+      target: number | string;
+      message: string;
+    }>;
+  };
   submissions: ScoreSubmission[];
   capExItems: CapExItem[];
   inspections: WalkthroughInspection[];

@@ -17,8 +17,12 @@ module.exports = {
       fontFamily: {
         serif: ['Cormorant Garamond', 'Georgia', 'serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
+        obsidian: '#090A0F',
+        slatepanel: '#121520',
+        champagne: '#D8C58F',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -57,6 +61,14 @@ module.exports = {
         lg: `var(--radius)`,
         md: `calc(var(--radius) - 2px)`,
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        'glass': '0 18px 70px -30px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+        'gold-glow': '0 0 32px -10px rgba(216, 197, 143, 0.55)',
+        'emerald-glow': '0 0 34px -12px rgba(52, 211, 153, 0.5)',
+      },
+      backdropBlur: {
+        glass: '16px',
       },
       keyframes: {
         "accordion-down": {

@@ -6,6 +6,8 @@
 - `src/domain/scoring.ts` is the pure collaborative scoring engine. It normalizes mixed 1–5/1–10 scales, applies weights, reports per-rater and per-criterion divergence, enforces blind reveal, and reports dealbreaker vetoes independently of numeric rank.
 - `src/domain/financials.ts` is the pure outflow engine. It calculates amortized principal/interest, taxes, insurance, HOA, utilities, CapEx totals, and true total investment.
 - `src/services/decisionApi.ts` is the typed transport boundary. Components do not construct decision-support endpoint URLs or Axios calls directly.
+- `src/services/assistantApi.ts` is the typed Search Copilot transport boundary. `server/routes/assistant.ts` owns authenticated persistence and orchestration; `server/services/assistant/` owns provider-neutral generation, structured retrieval, policy, citations, and fallback.
+- `server/mcp/` is the allowlisted tool boundary. MCP handlers call authorized domain services directly and never loop back through the public HTTP API.
 
 ## Component tree
 
@@ -13,6 +15,7 @@
 App
 ├── Dashboard
 │   ├── PropertyCard (shortlist selection, 2–4 listings)
+│   ├── SearchCopilot (shared threads, citations, audited actions)
 │   └── Compare action → /compare?ids=...
 ├── Comparison
 │   └── ComparativeDecisionMatrix
@@ -38,6 +41,25 @@ React Query owns server state and cache invalidation for listings, criteria, sco
 
 The server authorizes every group-scoped property operation. Score submissions are stored per user, and blind mode suppresses all team result details until both primary and co-buyer roles have submitted. Agent comments are accepted only from an agent membership; veto status is always evaluated separately from the composite score.
 
+## Search Copilot flow and trust boundaries
+
+```text
+Dashboard → authenticated assistant route → bounded orchestrator → Gemini provider
+                                           ↘ deterministic fallback
+Gemini/fallback → MCP registry → authorized Prisma services / approved public adapters
+                                  ↘ AssistantToolRun audit record
+```
+
+The browser receives no Gemini or MCP credential and cannot invoke MCP directly. Routes derive the user from the JWT; domain services resolve an accepted membership and group. Model-generated identity, group, role, host, and budget values are ignored. Criteria/import writes additionally require a buyer or co-buyer role, strict Zod input, an idempotency key, rate and per-turn budgets, and a visible result summary.
+
+MCP is in process for the current deployment. `createMcpServer` and `connectMcpTransport` keep transport replaceable; a remote deployment requires authenticated TLS, server-to-server credentials, and network controls that prevent direct browser access. `MCP_REMOTE_ENDPOINT` and `MCP_AUTH_TOKEN` are reserved configuration until that deployment adapter exists.
+
+Listing descriptions, public pages, user text, and tool output are untrusted data. They are bounded and separated from system policy, cannot add tools or permissions, and cannot increase execution limits. External listing imports continue to use approved hosts, safe redirects, timeouts, response limits, and private-network protections. Factual market claims are shown only with normalized source name, HTTP(S) URL, observation date when available, and retrieval timestamp.
+
+Gemini is behind the application-owned `AssistantProvider` interface and is limited by timeout, output-token, tool-call, write, and request-rate settings. Missing credentials, quota failures, timeouts, and orchestration errors enter deterministic fallback, which can parse supported criteria and retrieve the current checklist, saved-home ranking, and public links without generated prose.
+
+The MVP uses structured relational retrieval because current data is small, group-scoped, and visibility-sensitive. `Retriever` is the extension boundary for future group-authorized document RAG. PDF parsing, chunks, embeddings, citation spans, deletion/re-indexing, managed retrieval, a second hosted provider, and local inference remain out of scope; any later adapter must retain the same authorization, MCP allowlist, policy checks, and fallback.
+
 ## Persistence model
 
 The normalized relationship is:
@@ -48,6 +70,8 @@ Property   1──* ScoreSubmission
 Property   1──* CapExItem
 Property   1──* WalkthroughInspection 1──* InspectionItem 1──* InspectionMedia
 WalkthroughInspection 1──* AgentComment *──1 User(agent)
+BuyerGroup 1──* AssistantThread 1──* AssistantMessage
+AssistantThread 1──* AssistantToolRun *──1 User(invoker)
 ```
 
 JSON is appropriate only for bounded inspection item/media snapshots in this SQLite implementation. Criteria, submissions, property ownership, and CapEx remain relational so they can be filtered, authorized, and aggregated without parsing opaque payloads.

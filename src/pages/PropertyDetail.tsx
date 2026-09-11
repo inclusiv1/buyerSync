@@ -6,13 +6,14 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Home, ChevronLeft, Calendar, MessageSquare, Pencil, Trash2 } from 'lucide-react';
+import { Home, Calendar, MessageSquare, Pencil, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { format } from 'date-fns';
 import { useAuthStore } from '@/store/useAuthStore';
 import { WeightedScoringPanel } from '@/components/decision/WeightedScoringPanel';
 import { PropertyMap } from '@/components/property/PropertyMap';
 import { FinancingPanel } from '@/components/property/FinancingPanel';
+import ClientHeader from '@/components/navigation/ClientHeader';
 
 const toFormValue = (value: unknown) => value === undefined || value === null ? '' : String(value);
 
@@ -193,6 +194,12 @@ const PropertyDetail = () => {
     setConsText(Array.isArray(property?.cons) ? property.cons.join('\n') : '');
   }, [property?.id, property?.pros, property?.cons]);
 
+  useEffect(() => {
+    if (property && window.location.hash === '#scoring') {
+      window.requestAnimationFrame(() => document.getElementById('scoring')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+  }, [property]);
+
 
   const addNoteMutation = useMutation({
     mutationFn: (newNote: any) => api.post(`/properties/${id}/notes`, newNote),
@@ -269,17 +276,11 @@ const PropertyDetail = () => {
   };
 
   return (
-    <div className="editorial-shell pb-16">
-      <nav className="editorial-nav">
-        <div className="editorial-container flex h-20 items-center">
-          <Link to="/" className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-primary">
-            <ChevronLeft className="w-5 h-5" />
-            <span>Back to Search</span>
-          </Link>
-        </div>
-      </nav>
+    <div className="client-theme hearth-page min-h-screen bg-obsidian pb-16 text-foreground">
+      <ClientHeader active="decisions" />
 
       <main className="editorial-container space-y-8 py-8 md:py-12">
+        <Link to="/" className="inline-flex items-center gap-2 text-[0.62rem] font-medium uppercase tracking-[0.16em] text-muted-foreground transition hover:text-champagne">← Back to your homes</Link>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column: Photos & Basic Info */}
           <div className="lg:col-span-2 space-y-6">

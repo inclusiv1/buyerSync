@@ -4,13 +4,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { isTestMode } from '@/lib/authStorage';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Heart, KeyRound, Users } from 'lucide-react';
+import { ArrowRight, Users } from 'lucide-react';
+import AuthLayout from '@/components/auth/AuthLayout';
 
 interface TestUser {
   id: string;
@@ -77,35 +77,20 @@ const Login = () => {
   };
 
   return (
-    <div className="grid min-h-screen bg-background lg:grid-cols-[1.15fr_0.85fr]">
-      <section
-        className="auth-visual hidden min-h-screen lg:flex lg:flex-col lg:justify-between lg:p-12"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1800&q=88')" }}
-      >
-        <div className="flex items-center justify-between text-white">
-          <div className="font-serif text-3xl">Home Buyer Sync</div>
-          <span className="glass-label"><KeyRound className="h-3.5 w-3.5" /> Decisions, together</span>
-        </div>
-        <div className="max-w-xl text-white">
-          <p className="mb-5 flex items-center gap-2 text-[0.68rem] font-medium uppercase tracking-[0.3em] text-white/75"><Heart className="h-3.5 w-3.5" /> Curated for considered decisions</p>
-          <h1 className="font-serif text-7xl font-medium leading-[0.9]">Find the home<br /><em>your future fits.</em></h1>
-          <p className="mt-7 max-w-md border-l border-white/45 pl-4 text-sm leading-6 text-white/80">One beautiful place for listings, impressions, trade-offs, and the decision you make together.</p>
-        </div>
-      </section>
-      <section className="relative flex items-center justify-center px-5 pb-12 pt-44 md:px-12 lg:py-12">
-      <div className="absolute inset-x-5 top-5 h-28 bg-cover bg-center lg:hidden" style={{ backgroundImage: "linear-gradient(90deg, rgba(28,31,26,.2), rgba(28,31,26,.65)), url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=80')" }}><span className="absolute bottom-4 left-4 font-serif text-2xl text-white">Home Buyer Sync</span></div>
-      <Card className="w-full max-w-md border-0 bg-transparent shadow-none">
-        <CardHeader className="px-0">
-          <p className="eyebrow mb-3">Welcome back</p>
-          <CardTitle className="text-5xl">Sign in</CardTitle>
-          <p className="pt-2 text-sm text-muted-foreground">Continue your thoughtful home search.</p>
-        </CardHeader>
-        <CardContent>
+    <AuthLayout
+      eyebrow="Welcome back"
+      title={<>Everything closer.<br /><span className="metallic-text">Everyone aligned.</span></>}
+      description="Return to the shared operating system for your shortlist, finances, tours, and buying team."
+      image="https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1800&q=88"
+    >
+          <p className="hearth-eyebrow text-champagne">Your shared workspace</p>
+          <h2 className="mt-4 font-sans text-4xl font-semibold tracking-[-0.045em]">Sign in</h2>
+          <p className="mt-3 text-sm text-white/42">Pick up exactly where your team left off.</p>
           {isTestMode && (
-            <div className="mb-6 space-y-3 border border-primary/20 bg-primary/5 p-4">
+            <div className="mb-6 mt-5 space-y-3 rounded-2xl border border-violet-300/15 bg-violet-400/[0.06] p-4">
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4" /> Three-user test workspace</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">Choose a buyer for this tab. From the dashboard, use <span className="font-medium text-foreground">Another user</span> to open separate tabs for the other two perspectives.</p>
+                <p className="mt-1 text-xs leading-5 text-white/40">Choose a buyer for this tab. Use <span className="font-medium text-white/70">Another user</span> in the workspace to open other perspectives.</p>
               </div>
               {testUsersLoading && <p className="text-sm text-muted-foreground" role="status">Preparing Alex, Blair, and Cameron…</p>}
               {testUsersError && <p className="text-sm text-red-600" role="alert">{testUsersError}</p>}
@@ -127,7 +112,7 @@ const Login = () => {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               {error && (
-                <div className="p-3 bg-red-50 text-red-600 rounded text-sm font-medium">
+                <div className="rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm font-medium text-red-200" role="alert">
                   {error}
                 </div>
               )}
@@ -138,7 +123,7 @@ const Login = () => {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john@example.com" {...field} />
+                      <Input type="email" autoComplete="email" placeholder="you@example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -151,26 +136,23 @@ const Login = () => {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="******" {...field} />
+                      <Input type="password" autoComplete="current-password" placeholder="Your password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="mt-2 w-full gap-2">Sign in <ArrowRight className="h-4 w-4" /></Button>
+              <Button type="submit" className="shimmer-button mt-2 w-full gap-2 rounded-xl bg-champagne text-[#11100d] hover:bg-white hover:text-[#11100d]" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Signing in…' : <>Sign in <ArrowRight className="h-4 w-4" /></>}</Button>
             </form>
           </Form>
-          <div className="mt-4 text-center text-sm">
+          <div className="mt-5 text-center text-xs text-white/38">
             Don't have an account?{' '}
-            <Link to="/signup" className="font-medium text-primary hover:underline">
+            <Link to="/signup" className="font-medium text-champagne hover:text-white">
               Create an account
             </Link>
           </div>
-          <p className="mt-3 text-center text-sm text-muted-foreground">Want to advertise? <Link to="/advertise/signup" className="font-medium text-primary hover:underline">Create a partner account</Link></p>
-        </CardContent>
-      </Card>
-      </section>
-    </div>
+          <p className="mt-3 text-center text-xs text-white/30">Want to advertise? <Link to="/advertise/signup" className="font-medium text-white/55 hover:text-white">Create a partner account</Link></p>
+    </AuthLayout>
   );
 };
 

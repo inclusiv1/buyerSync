@@ -10,12 +10,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
-import { isTestMode } from '@/lib/authStorage';
-import { Plus, Home, Users, Settings, LogOut, Pencil, Trash2, GitCompareArrows, ArrowRight, Sparkles, Search, ExternalLink, Mail } from 'lucide-react';
+import { Plus, Home, Users, Settings, Pencil, Trash2, GitCompareArrows, ArrowRight, Sparkles, Search, ExternalLink, Mail } from 'lucide-react';
 import { PropertyEditForm } from '@/pages/PropertyDetail';
 import { PropertyMap } from '@/components/property/PropertyMap';
 import { AdSlot } from '@/components/advertising/AdSlot';
-import BrandLogo from '@/components/BrandLogo';
+import { SearchCopilot } from '@/components/assistant/SearchCopilot';
+import WorkspaceHub from '@/components/workspace/WorkspaceHub';
+import ClientHeader from '@/components/navigation/ClientHeader';
+import type { ProductArea } from '@/components/navigation/ProductAreaTabs';
 
 const getPrimaryPhoto = (photosData: any): string | null => {
   if (!photosData) return null;
@@ -397,8 +399,12 @@ const AddPropertyForm = ({ onSuccess, searchId }: { onSuccess: () => void; searc
 };
 
 const Dashboard = () => {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const requestedArea = new URLSearchParams(window.location.search).get('area');
+  const [workspaceArea, setWorkspaceArea] = useState<ProductArea>(
+    requestedArea === 'financials' || requestedArea === 'tours' || requestedArea === 'team' ? requestedArea : 'decisions'
+  );
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteEmailDraftUrl, setInviteEmailDraftUrl] = useState('');
   const [inviteEmailAlternatives, setInviteEmailAlternatives] = useState<Array<{ provider: string; url: string }>>([]);
@@ -503,34 +509,19 @@ const Dashboard = () => {
     }
   };
 
+  const selectWorkspaceArea = (area: ProductArea) => {
+    setWorkspaceArea(area);
+    window.history.replaceState(null, '', `/?area=${area}#workspace`);
+    window.requestAnimationFrame(() => document.getElementById('workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+
   return (
-    <div className="editorial-shell pb-16">
-      <nav className="editorial-nav">
-        <div className="editorial-container flex h-20 items-center justify-between">
-          <Link to="/dashboard" aria-label="Home Buyer Sync dashboard">
-            <BrandLogo className="h-14 w-auto max-w-[12rem] sm:max-w-none" />
-          </Link>
-          <div className="hidden items-center gap-8 text-[0.68rem] font-medium uppercase tracking-[0.2em] text-muted-foreground md:flex">
-            <span className="text-foreground">Properties</span>
-            <Link className="transition-colors hover:text-foreground" to="/checklist">Criteria</Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="hidden text-xs uppercase tracking-[0.12em] text-muted-foreground md:inline">Signed in as {user?.name}</span>
-            {isTestMode && (
-              <Button variant="outline" size="sm" className="hidden gap-2 sm:flex" onClick={() => window.open('/login', '_blank', 'noopener,noreferrer')}>
-                <ExternalLink className="h-4 w-4" /> Another user
-              </Button>
-            )}
-            <Button variant="ghost" size="icon" onClick={logout} title="Logout">
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-      </nav>
+    <div className="client-theme hearth-page min-h-screen bg-obsidian pb-16 text-foreground">
+      <ClientHeader active={workspaceArea} onAreaSelect={selectWorkspaceArea} />
 
       <div className="ad-dashboard-layout">
       <div className="ad-side-rail"><AdSlot placement="left" /></div>
-      <main className="editorial-container space-y-10 py-6 md:py-10">
+      <main className="editorial-container space-y-10 py-7 md:py-10">
         <section className="space-y-4 border-b border-foreground/10 pb-7">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div><p className="eyebrow flex items-center gap-2"><Search className="h-3.5 w-3.5" /> Your searches</p><p className="mt-2 text-sm text-muted-foreground">Choose an area of interest and see everyone contributing to it.</p></div>
@@ -613,6 +604,20 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        <div id="workspace" className="scroll-mt-36">
+          <WorkspaceHub
+            properties={properties ?? []}
+            contributors={activeSearch?.contributors ?? []}
+            rate={rates?.find((rate: any) => rate.rateType === '30yr')?.rate ?? 6.5}
+            selectedIds={selectedPropertyIds}
+            onSelect={selectProperty}
+            activeArea={workspaceArea}
+            onAreaChange={selectWorkspaceArea}
+          />
+        </div>
+
+        <SearchCopilot key={selectedSearchId} searchId={selectedSearchId} />
 
         {properties?.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-y border-foreground/10 bg-background/50 py-4">
@@ -728,10 +733,10 @@ const Dashboard = () => {
         </Dialog>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t">
-          <Card>
+          <Card id="invite-team">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" /> Collaborate
+                <Users className="w-5 h-5" /> Your team
               </CardTitle>
               <CardDescription>Invite co-buyers or your agent to join {activeSearch?.name || 'this search'}.</CardDescription>
             </CardHeader>

@@ -89,6 +89,20 @@ function firstValue(...values: unknown[]): unknown {
   return values.find((value) => value !== undefined && value !== null && value !== '');
 }
 
+const NUMERIC_PROPERTY_FIELDS = [
+  'price', 'beds', 'baths', 'sqft', 'yearBuilt', 'lotSize', 'hoa', 'latitude', 'longitude',
+] as const;
+
+function sanitizePropertyNumbers(property: PropertyData): PropertyData {
+  const sanitized = { ...property };
+  for (const field of NUMERIC_PROPERTY_FIELDS) {
+    const value = numberValue(property[field]);
+    if (value === undefined) delete sanitized[field];
+    else sanitized[field] = value;
+  }
+  return sanitized;
+}
+
 function unwrapPayload(payload: unknown): Record<string, unknown> {
   if (Array.isArray(payload)) return (payload[0] || {}) as Record<string, unknown>;
   if (!payload || typeof payload !== 'object') return {};
@@ -105,31 +119,35 @@ export function normalizeProviderPayload(payload: unknown, sourceUrl?: string): 
   const value = unwrapPayload(payload);
   const addressValue = value.address;
   const address = addressValue && typeof addressValue === 'object' ? addressValue as Record<string, unknown> : {};
-  const photosValue = firstValue(value.photos, value.images, value.imageUrls, value.image_urls, value.image);
-  const photos = (Array.isArray(photosValue) ? photosValue : photosValue ? [photosValue] : [])
+  const photosValue = firstValue(value.photos, value.images, value.imageUrls, value.image_urls, value.alt_photos, value.image);
+  const photos = [value.primary_photo, ...(Array.isArray(photosValue) ? photosValue : photosValue ? [photosValue] : [])]
     .map((photo) => typeof photo === 'string' ? photo : stringValue((photo as Record<string, unknown>)?.url))
     .filter((photo): photo is string => Boolean(photo))
     .slice(0, 50);
+  const fullBaths = numberValue(value.full_baths);
+  const halfBaths = numberValue(value.half_baths);
+  const bathrooms = numberValue(firstValue(value.baths, value.bathrooms))
+    ?? (fullBaths !== undefined ? fullBaths + (halfBaths || 0) * 0.5 : undefined);
 
   return {
-    address: stringValue(firstValue(value.streetAddress, value.street_address, value.addressLine, value.address_line, address.streetAddress, address.line, typeof addressValue === 'string' ? addressValue : undefined)),
+    address: stringValue(firstValue(value.streetAddress, value.street_address, value.full_street_line, value.formatted_address, value.addressLine, value.address_line, value.street, address.streetAddress, address.line, typeof addressValue === 'string' ? addressValue : undefined)),
     city: stringValue(firstValue(value.city, value.locality, address.city, address.addressLocality)),
     state: stringValue(firstValue(value.state, value.stateCode, value.state_code, address.state, address.addressRegion)),
-    zip: stringValue(firstValue(value.zip, value.zipcode, value.postcode, value.postalCode, value.postal_code, address.zipcode, address.postalCode)),
+    zip: stringValue(firstValue(value.zip, value.zipcode, value.zip_code, value.postcode, value.postalCode, value.postal_code, address.zipcode, address.postalCode)),
     price: numberValue(firstValue(value.price, value.listPrice, value.list_price)),
     beds: numberValue(firstValue(value.beds, value.bedrooms)),
-    baths: numberValue(firstValue(value.baths, value.bathrooms)),
+    baths: bathrooms,
     sqft: numberValue(firstValue(value.sqft, value.squareFeet, value.square_feet, value.livingArea, value.living_area)),
     yearBuilt: numberValue(firstValue(value.yearBuilt, value.year_built)),
-    lotSize: numberValue(firstValue(value.lotSize, value.lot_size, value.lotAcres, value.lot_acres)),
+    lotSize: numberValue(firstValue(value.lotSize, value.lot_size, value.lot_sqft, value.lotAcres, value.lot_acres)),
     propertyType: stringValue(firstValue(value.propertyType, value.property_type, value.style)),
     hoa: numberValue(firstValue(value.hoa, value.hoaFee, value.hoa_fee)),
-    mlsId: stringValue(firstValue(value.mlsId, value.mls_id, value.mls)),
+    mlsId: stringValue(firstValue(value.mlsId, value.mls_id, value.listing_id, value.mls)),
     description: stringValue(firstValue(value.description, value.text)),
     photos: photos.length ? photos : undefined,
     latitude: numberValue(firstValue(value.latitude, value.lat)),
     longitude: numberValue(firstValue(value.longitude, value.lng, value.lon)),
-    sourceUrl: stringValue(firstValue(value.sourceUrl, value.source_url, value.url)) || sourceUrl,
+    sourceUrl: stringValue(firstValue(value.sourceUrl, value.source_url, value.property_url, value.permalink, value.url)) || sourceUrl,
   };
 }
 
@@ -222,7 +240,7 @@ const existingParserProvider: ListingImportProvider = {
 export const defaultListingImportProviders = [propertyWebProvider, renderedHtmlProvider, homeHarvestProvider, existingParserProvider];
 
 export async function runProviderChain(url: string, providers: ListingImportProvider[]): Promise<Omit<ListingImportResult, 'importMeta'> & { attempts: ImportAttempt[]; providers: string[] }> {
-  let property: PropertyData = { ...parseUrlFallback(url), sourceUrl: url };
+  let property: PropertyData = sanitizePropertyNumbers({ ...parseUrlFallback(url), sourceUrl: url });
   const attempts: ImportAttempt[] = [];
   const successfulProviders: string[] = [];
 
@@ -233,7 +251,7 @@ export async function runProviderChain(url: string, providers: ListingImportProv
       continue;
     }
     try {
-      const extracted = await provider.extract(url, property);
+      const extracted = sanitizePropertyNumbers(await provider.extract(url, property));
       property = mergePropertyData(property, extracted);
       const complete = listingCompleteness(property);
       const useful = Object.values(extracted).some((value) => value !== undefined && value !== url);

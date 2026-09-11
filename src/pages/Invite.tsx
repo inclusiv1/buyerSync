@@ -5,10 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import AuthLayout from '@/components/auth/AuthLayout';
 
 const inviteSchema = z.object({
   name: z.string().min(2),
@@ -44,23 +44,23 @@ const Invite = () => {
     }
   };
 
-  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
-  if (!inviteInfo) return <div className="p-8 text-center">Loading invitation...</div>;
+  if (error) return <div className="hearth-page grid min-h-screen place-items-center bg-obsidian p-8 text-center text-red-300">{error}</div>;
+  if (!inviteInfo) return <div className="hearth-page grid min-h-screen place-items-center bg-obsidian p-8 text-center text-white/55">Loading invitation…</div>;
 
   return (
-    <div className="editorial-shell flex min-h-screen items-center justify-center px-5 py-12">
-      <Card className="w-full max-w-md bg-background">
-        <CardHeader>
-          <p className="eyebrow mb-3">A shared home search</p>
-          <CardTitle className="text-4xl">You've been invited</CardTitle>
-          <CardDescription>
-            Join <strong>{inviteInfo.group.name}</strong> to collaborate on the home search.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <AuthLayout
+      eyebrow="A place at the table"
+      title={<>The best home is<br /><span className="metallic-text">a shared decision.</span></>}
+      description="Join the people you trust in one connected space for decisions, financials, tours, and every next step."
+      image="https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1800&q=88"
+    >
+          <p className="hearth-eyebrow text-champagne">A shared home search</p>
+          <h2 className="mt-4 font-sans text-4xl font-semibold tracking-[-0.045em]">You've been invited</h2>
+          <p className="mt-3 text-sm leading-6 text-white/45">Join <strong className="text-white/75">{inviteInfo.group.name}</strong> to collaborate on the home search.</p>
+          <div className="mt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="text-sm font-medium text-slate-500">Email: {inviteInfo.invitedEmail}</div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3 text-xs text-white/45">Invited email: <span className="text-white/70">{inviteInfo.invitedEmail}</span></div>
               <FormField
                 control={form.control}
                 name="name"
@@ -68,7 +68,7 @@ const Invite = () => {
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Smith" {...field} />
+                      <Input autoComplete="name" placeholder="Your full name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -81,18 +81,17 @@ const Invite = () => {
                   <FormItem>
                     <FormLabel>Choose a Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="******" {...field} />
+                      <Input type="password" autoComplete="new-password" placeholder="Choose a secure password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">Accept & Join</Button>
+              <Button type="submit" className="shimmer-button w-full rounded-xl bg-champagne text-[#11100d] hover:bg-white hover:text-[#11100d]">Accept &amp; join</Button>
             </form>
           </Form>
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+    </AuthLayout>
   );
 };
 

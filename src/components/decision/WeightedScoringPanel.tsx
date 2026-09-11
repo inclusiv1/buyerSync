@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, EyeOff, Scale } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, CheckCircle2, EyeOff, Plus, Scale, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { decisionApi } from '@/services/decisionApi';
 import type { CriterionRating, DealbreakerRating } from '@/domain/models';
@@ -19,6 +21,8 @@ export function WeightedScoringPanel({ listingId, listingLabel }: WeightedScorin
   const { user } = useAuthStore();
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [dealbreakers, setDealbreakers] = useState<Record<string, boolean>>({});
+  const [newCriterionLabel, setNewCriterionLabel] = useState('');
+  const [newCriterionWeight, setNewCriterionWeight] = useState(5);
   const criteriaQuery = useQuery({ queryKey: ['decision-criteria'], queryFn: decisionApi.getCriteria });
   const decisionQuery = useQuery({
     queryKey: ['property-decision', listingId],
@@ -57,12 +61,38 @@ export function WeightedScoringPanel({ listingId, listingLabel }: WeightedScorin
       scores: Object.entries(ratings).map(([criterionId, value]): CriterionRating => ({ criterionId, value })),
       dealbreakers: Object.entries(dealbreakers).map(([criterionId, triggered]): DealbreakerRating => ({ criterionId, triggered })),
     }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['property-decision', listingId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['property-decision', listingId] });
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+    },
+  });
+  const addCriterionMutation = useMutation({
+    mutationFn: () => decisionApi.addCriterion({
+      label: newCriterionLabel.trim(),
+      description: '',
+      category: 'custom',
+      weight: newCriterionWeight,
+      scaleMax: 10,
+      isDealbreaker: false,
+    }),
+    onSuccess: () => {
+      setNewCriterionLabel('');
+      queryClient.invalidateQueries({ queryKey: ['decision-criteria'] });
+      queryClient.invalidateQueries({ queryKey: ['property-decision', listingId] });
+    },
   });
   const result = decisionQuery.data?.scoreResult;
+  const automaticAssessment = decisionQuery.data?.automaticAssessment;
+  const personalScore = useMemo(() => {
+    const weighted = criteria.filter((criterion) => !criterion.isDealbreaker && criterion.weight > 0);
+    const totalWeight = weighted.reduce((sum, criterion) => sum + criterion.weight, 0);
+    if (!totalWeight || weighted.some((criterion) => ratings[criterion.id] === undefined)) return null;
+    const total = weighted.reduce((sum, criterion) => sum + (ratings[criterion.id] / criterion.scaleMax) * criterion.weight, 0);
+    return Math.round((total / totalWeight) * 100);
+  }, [criteria, ratings]);
 
   return (
-    <Card aria-labelledby={`scoring-${listingId}`}>
+    <Card id="scoring" className="scroll-mt-28" aria-labelledby={`scoring-${listingId}`}>
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -75,10 +105,29 @@ export function WeightedScoringPanel({ listingId, listingLabel }: WeightedScorin
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {automaticAssessment && automaticAssessment.assessments.length > 0 && (
+          <div className="rounded-xl border border-violet-300/15 bg-violet-400/[0.06] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="h-4 w-4 text-violet-300" /> Initial property assessment</div>
+              <strong className="text-xl text-violet-200">{Math.round(automaticAssessment.score)}%</strong>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Calculated from the listing facts and your saved search requirements.</p>
+            <div className="mt-3 space-y-2">
+              {automaticAssessment.assessments.map((assessment) => (
+                <div key={assessment.key} className="flex items-start gap-2 text-xs">
+                  {assessment.met
+                    ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                    : <AlertTriangle className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${assessment.status === 'unknown' ? 'text-amber-300' : 'text-red-300'}`} />}
+                  <span className={assessment.met ? 'text-muted-foreground' : 'text-foreground'}>{assessment.message}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {result?.blind && !result.revealed && (
           <div className="flex gap-3 border border-primary/20 bg-primary/5 p-3 text-sm text-foreground" role="status">
             <EyeOff className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>Your ratings are saved. Team results remain hidden until both buyers submit.</span>
+            <span>Your ratings are saved{personalScore === null ? '' : ` at ${personalScore}%`}. Team results remain hidden until every buyer submits.</span>
           </div>
         )}
         {result?.revealed && result.compositeScore !== null && (
@@ -105,23 +154,66 @@ export function WeightedScoringPanel({ listingId, listingLabel }: WeightedScorin
                 <AlertTriangle className="h-4 w-4" /> This listing violates this dealbreaker
               </label>
             ) : (
-              <div className="flex items-center gap-4">
-                <Slider
-                  aria-label={`${criterion.label} rating`}
-                  min={1}
-                  max={criterion.scaleMax}
-                  step={1}
-                  value={[ratings[criterion.id] ?? 1]}
-                  onValueChange={([value]) => setRatings((current) => ({ ...current, [criterion.id]: value }))}
-                />
-                <output className="w-14 text-right text-sm font-bold">{ratings[criterion.id] ?? 1}/{criterion.scaleMax}</output>
+              <div className="space-y-3">
+                <div className="flex items-center gap-4">
+                  <Slider
+                    aria-label={`${criterion.label} rating`}
+                    min={1}
+                    max={criterion.scaleMax}
+                    step={1}
+                    value={[ratings[criterion.id] ?? 1]}
+                    onValueChange={([value]) => setRatings((current) => ({ ...current, [criterion.id]: value }))}
+                  />
+                  <output className="w-14 text-right text-sm font-bold">{ratings[criterion.id] ?? 1}/{criterion.scaleMax}</output>
+                </div>
+                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${criterion.scaleMax}, minmax(0, 1fr))` }}>
+                  {Array.from({ length: criterion.scaleMax }, (_, index) => index + 1).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`h-8 border text-xs font-semibold transition ${ratings[criterion.id] === value ? 'border-primary bg-primary text-primary-foreground' : 'border-foreground/10 bg-foreground/[0.03] hover:border-primary/50 hover:text-primary'}`}
+                      aria-label={`Rate ${criterion.label} ${value} out of ${criterion.scaleMax}`}
+                      aria-pressed={ratings[criterion.id] === value}
+                      onClick={() => setRatings((current) => ({ ...current, [criterion.id]: value }))}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </fieldset>
         ))}
         {criteriaQuery.isError && <p className="text-sm text-red-600">Scoring criteria could not be loaded.</p>}
-        {criteria.length === 0 && !criteriaQuery.isLoading && <p className="text-sm text-slate-500">Add decision criteria to begin scoring.</p>}
+        {criteria.length === 0 && !criteriaQuery.isLoading && (
+          <form
+            className="space-y-4 border border-primary/20 bg-primary/[0.05] p-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (newCriterionLabel.trim()) addCriterionMutation.mutate();
+            }}
+          >
+            <div>
+              <p className="text-sm font-semibold">Create your first editable score</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Your property facts are assessed above. Add a weighted judgment such as location, condition, layout, or overall fit to enter your own rating.</p>
+            </div>
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">What do you want to rate?</span>
+              <Input value={newCriterionLabel} placeholder="Overall fit" onChange={(event) => setNewCriterionLabel(event.target.value)} />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weight (1–10)</span>
+              <Input type="number" min={1} max={10} value={newCriterionWeight} onChange={(event) => setNewCriterionWeight(Math.min(10, Math.max(1, Number(event.target.value) || 1)))} />
+            </label>
+            {addCriterionMutation.isError && <p className="text-sm text-red-300" role="alert">The scoring criterion could not be created.</p>}
+            <Button type="submit" className="w-full" disabled={!newCriterionLabel.trim() || addCriterionMutation.isPending}>
+              <Plus className="h-4 w-4" /> {addCriterionMutation.isPending ? 'Creating…' : 'Add rating row'}
+            </Button>
+            <Button type="button" variant="ghost" className="w-full" asChild><Link to="/checklist">Manage all criteria &amp; weights</Link></Button>
+          </form>
+        )}
         {submitMutation.isError && <p className="text-sm text-red-600">Your scores could not be submitted. Please try again.</p>}
+        {submitMutation.isSuccess && <p className="text-sm text-emerald-300" role="status">Your score was saved.</p>}
         <Button className="w-full" disabled={!criteria.length || submitMutation.isPending} onClick={() => submitMutation.mutate()}>
           {submitMutation.isPending ? 'Submitting…' : 'Submit my score'}
         </Button>

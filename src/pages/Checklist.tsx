@@ -1,11 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { ChevronLeft } from 'lucide-react';
 import api from '@/lib/api';
 import { DecisionCriteriaManager } from '@/components/decision/DecisionCriteriaManager';
+import ClientHeader from '@/components/navigation/ClientHeader';
 
 const Checklist = () => {
   const queryClient = useQueryClient();
@@ -22,6 +21,8 @@ const Checklist = () => {
     mutationFn: (data: any) => api.post('/search-criteria', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['search-criteria'] });
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['property-decision'] });
     }
   });
 
@@ -45,20 +46,13 @@ const Checklist = () => {
   };
 
   return (
-    <div className="editorial-shell pb-16">
-      <nav className="editorial-nav">
-        <div className="mx-auto flex h-20 max-w-5xl items-center px-5 md:px-10">
-          <Link to="/" className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-primary">
-            <ChevronLeft className="w-5 h-5" />
-            <span>Back to Dashboard</span>
-          </Link>
-        </div>
-      </nav>
+    <div className="client-theme hearth-page min-h-screen bg-obsidian pb-16 text-foreground">
+      <ClientHeader active="decisions" />
 
       <main className="mx-auto max-w-5xl space-y-8 px-5 py-10 md:px-10 md:py-16">
         <div className="border-b border-foreground/10 pb-10">
-          <p className="eyebrow mb-4">Shape the search</p>
-          <h1 className="display-title">Search criteria</h1>
+          <p className="hearth-eyebrow mb-4 text-violet-300">01 · Decisions</p>
+          <h1 className="font-sans text-4xl font-semibold tracking-[-0.045em] md:text-6xl">Search criteria</h1>
           <p className="mt-4 text-muted-foreground">Define shared must-haves and weighted preferences in one collaborative scoring system.</p>
         </div>
 
@@ -153,6 +147,8 @@ const Checklist = () => {
                   {updateCriteriaMutation.isPending ? 'Saving...' : 'Save Search Criteria'}
                 </Button>
               </div>
+              {updateCriteriaMutation.isSuccess && <p className="text-right text-sm text-emerald-300" role="status">Criteria saved. Property assessments have been refreshed.</p>}
+              {updateCriteriaMutation.isError && <p className="text-right text-sm text-red-300" role="alert">Criteria could not be saved. Please try again.</p>}
             </form>
           </CardContent>
         </Card>
