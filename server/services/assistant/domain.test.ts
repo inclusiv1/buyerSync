@@ -62,6 +62,35 @@ test('strictly validates criteria patches before writing', async () => {
   assert.equal(upserted, false);
 });
 
+test('persists the additional Zillow-style home search criteria', async () => {
+  let savedData: Record<string, unknown> | undefined;
+  const db = {
+    groupMembership: { findFirst: async () => membership },
+    searchCriteria: {
+      upsert: async ({ update }: { update: Record<string, unknown> }) => {
+        savedData = update;
+        return update;
+      },
+    },
+  } as unknown as PrismaClient;
+
+  const result = await updateSearchProfile(db, 'buyer-1', {
+    maxBeds: 4,
+    keywords: 'updated kitchen',
+    listingTypes: ['By Owner', 'New Construction'],
+    homeFeatures: ['Pool', 'Waterfront'],
+  }, 'group-1');
+
+  assert.deepEqual(savedData, {
+    maxBeds: 4,
+    keywords: 'updated kitchen',
+    listingTypes: JSON.stringify(['By Owner', 'New Construction']),
+    homeFeatures: JSON.stringify(['Pool', 'Waterfront']),
+  });
+  assert.deepEqual(result.criteria.listingTypes, ['By Owner', 'New Construction']);
+  assert.deepEqual(result.criteria.homeFeatures, ['Pool', 'Waterfront']);
+});
+
 test('keeps collaborative ratings hidden until all buyers submit', async () => {
   const db = {
     property: { findUnique: async () => ({ id: 'property-1', groupId: 'group-1', address: '1 Main St' }) },

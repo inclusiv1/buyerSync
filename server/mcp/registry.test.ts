@@ -74,6 +74,16 @@ test('all schemas reject identity and unknown fields and enforce bounds', () => 
     assert.equal(schema.safeParse({ groupId: 'other-group' }).success, false);
   }
   assert.equal(toolInputSchemas.search_listings.safeParse({ location: 'Austin, TX', limit: 101 }).success, false);
+  assert.equal(toolInputSchemas.search_listings.safeParse({
+    location: 'Austin, TX',
+    maxBeds: 4,
+    keywords: 'updated kitchen',
+    listingTypes: ['By Owner'],
+    homeFeatures: ['Pool'],
+  }).success, true);
+  assert.equal(toolInputSchemas.update_search_criteria.safeParse({
+    listingTypes: ['Unknown Type'],
+  }).success, false);
   assert.equal(toolInputSchemas.import_listing.safeParse({ url: 'file:///etc/passwd' }).success, false);
   assert.equal(toolInputSchemas.import_listing.safeParse({ url: 'https://www.zillow.com/home', listings: [{ address: '1 Main St' }] }).success, false);
   assert.equal(toolInputSchemas.import_listing.safeParse({ listings: Array.from({ length: 101 }, (_, index) => ({ address: `${index} Main St` })) }).success, false);

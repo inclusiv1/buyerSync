@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildRentCastSearchUrl, searchRentCastListings } from './listingSearch';
+import { buildRentCastSearchUrl, searchPublicListings, searchRentCastListings } from './listingSearch';
 
 test('builds RentCast city, state, and ZIP searches with the maximum page size', () => {
   const city = buildRentCastSearchUrl({ location: 'Marietta, GA', limit: 50 }, 'https://api.rentcast.io/v1/listings/sale');
@@ -94,5 +94,116 @@ test('matches natural-language property type variants returned by the copilot', 
   } finally {
     if (previousApiKey === undefined) delete process.env.RENTCAST_API_KEY;
     else process.env.RENTCAST_API_KEY = previousApiKey;
+  }
+});
+
+test('applies available Zillow-style numeric, keyword, listing, and home feature filters', async () => {
+  const previousApiKey = process.env.RENTCAST_API_KEY;
+  process.env.RENTCAST_API_KEY = 'test-key';
+  const response = {
+    ok: true,
+    json: async () => [
+      {
+        id: 'match',
+        formattedAddress: '1 Main St, Austin, TX 78704',
+        bedrooms: 3,
+        squareFootage: 1_800,
+        days_on_market: 12,
+        propertyType: 'Single Family',
+        listing_types: ['by_owner'],
+        features: ['Swimming Pool', 'Lakefront'],
+        description: 'Recently updated kitchen and outdoor living area',
+      },
+      {
+        id: 'too-large',
+        formattedAddress: '2 Main St, Austin, TX 78704',
+        bedrooms: 5,
+        squareFootage: 2_400,
+        days_on_market: 12,
+        propertyType: 'Single Family',
+        listing_types: ['By Owner'],
+        features: ['Pool', 'Waterfront'],
+        description: 'Recently updated kitchen',
+      },
+      {
+        id: 'wrong-subtype',
+        formattedAddress: '3 Main St, Austin, TX 78704',
+        bedrooms: 3,
+        squareFootage: 1_800,
+        days_on_market: 12,
+        propertyType: 'Single Family',
+        listing_types: ['By Agent'],
+        features: ['Pool', 'Waterfront'],
+        description: 'Recently updated kitchen',
+      },
+    ],
+  } as Response;
+
+  try {
+    const listings = await searchRentCastListings({
+      location: 'Austin, TX',
+      limit: 10,
+      maxBeds: 4,
+      maxSqft: 2_000,
+      daysOld: 30,
+      propertyTypes: ['Single Family'],
+      listingTypes: ['By Owner'],
+      homeFeatures: ['Pool', 'Waterfront'],
+      keywords: 'updated kitchen',
+    }, async () => response);
+
+    assert.deepEqual(listings.map((listing) => listing.address), ['1 Main St, Austin, TX 78704']);
+  } finally {
+    if (previousApiKey === undefined) delete process.env.RENTCAST_API_KEY;
+    else process.env.RENTCAST_API_KEY = previousApiKey;
+  }
+});
+
+test('forwards supported extended filters to the HomeHarvest adapter', async () => {
+  const previousRentCastApiKey = process.env.RENTCAST_API_KEY;
+  const previousHomeHarvestUrl = process.env.HOMEHARVEST_SERVICE_URL;
+  delete process.env.RENTCAST_API_KEY;
+  process.env.HOMEHARVEST_SERVICE_URL = 'http://homeharvest.test';
+  let requestBody: Record<string, unknown> | undefined;
+
+  try {
+    await searchPublicListings({
+      location: 'HomeHarvest filter pass-through test',
+      limit: 10,
+      maxBeds: 4,
+      minSqft: 1_200,
+      maxSqft: 2_400,
+      lotSizeMin: 5_000,
+      lotSizeMax: 12_000,
+      yearBuiltMin: 1990,
+      yearBuiltMax: 2020,
+      daysOld: 30,
+      propertyTypes: ['Single Family'],
+      listingTypes: ['Foreclosures'],
+    }, async (_input, init) => {
+      requestBody = JSON.parse(String(init?.body));
+      return { ok: true, json: async () => ({ listings: [] }) } as Response;
+    });
+
+    assert.deepEqual(requestBody, {
+      location: 'HomeHarvest filter pass-through test',
+      listing_type: 'for_sale',
+      limit: 10,
+      max_beds: 4,
+      min_sqft: 1_200,
+      max_sqft: 2_400,
+      lot_size_min: 5_000,
+      lot_size_max: 12_000,
+      year_built_min: 1990,
+      year_built_max: 2020,
+      days_old: 30,
+      foreclosure: true,
+      property_type: 'single_family',
+    });
+  } finally {
+    if (previousRentCastApiKey === undefined) delete process.env.RENTCAST_API_KEY;
+    else process.env.RENTCAST_API_KEY = previousRentCastApiKey;
+    if (previousHomeHarvestUrl === undefined) delete process.env.HOMEHARVEST_SERVICE_URL;
+    else process.env.HOMEHARVEST_SERVICE_URL = previousHomeHarvestUrl;
   }
 });

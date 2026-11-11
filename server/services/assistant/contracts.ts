@@ -8,6 +8,8 @@ const httpUrlSchema = z.string().url().max(2048).refine((value) => {
 }, 'URL must use HTTP or HTTPS');
 
 export const rentCastPropertyTypes = ['Single Family', 'Condo', 'Townhouse', 'Manufactured', 'Multi-Family', 'Apartment', 'Land'] as const;
+export const listingTypeOptions = ['By Agent', 'By Owner', 'New Construction', 'Foreclosures', 'Coming Soon', 'Auction', 'Accepted Offer'] as const;
+export const homeFeatureOptions = ['Parking', 'Garage', 'Basement', 'Single Story', 'Pool', 'Waterfront', 'Air Conditioning', 'Fireplace', '3D or video tour', 'Open House', 'Price Reduced'] as const;
 
 export const searchCriteriaPatchSchema = z.object({
   location: z.string().trim().min(2).max(300).nullable().optional()
@@ -17,10 +19,14 @@ export const searchCriteriaPatchSchema = z.object({
   minPrice: boundedNullableNumber(1_000_000_000),
   maxPrice: boundedNullableNumber(1_000_000_000),
   minBeds: boundedNullableInteger(100),
+  maxBeds: boundedNullableInteger(100),
   minBaths: boundedNullableNumber(100),
   minSqft: boundedNullableNumber(10_000_000),
   maxSqft: boundedNullableNumber(10_000_000),
   propertyTypes: z.array(z.enum(rentCastPropertyTypes)).max(20).nullable().optional(),
+  listingTypes: z.array(z.enum(listingTypeOptions)).max(20).nullable().optional(),
+  homeFeatures: z.array(z.enum(homeFeatureOptions)).max(20).nullable().optional(),
+  keywords: z.string().trim().max(300).nullable().optional(),
   yearBuiltMin: boundedNullableInteger(3000),
   yearBuiltMax: boundedNullableInteger(3000),
   lotSizeMin: boundedNullableNumber(1_000_000_000),

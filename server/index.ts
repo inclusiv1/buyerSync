@@ -13,12 +13,15 @@ import { calculateScore } from './utils/scoring';
 import { buildDecisionResult } from './utils/decision';
 import { getLatestRates } from './services/mortgage';
 import { buildInvitationWebmailDrafts, sendInvitationEmail } from './services/email';
+import { sendInvitationSmsMessage } from './services/linq';
 import { isTestMode, setupTestMode, testAccounts } from './testMode';
 import { adStatuses, isCampaignLive, parseCampaign, paymentStatuses, safeHttpsUrl } from './utils/advertising';
 import { detectAdCreativeExtension } from './utils/adCreativeUpload';
 import { getInvitationBaseUrl } from './utils/invitationUrl';
 import { isUniqueSignupConflict, parseBuyerSignupInput, SignupInputError } from './utils/signup';
 import { createAssistantRouter } from './routes/assistant';
+import { createLinqRouter } from './routes/linq';
+import { startLinqWebhookListener, stopLinqWebhookListener } from './services/linqListener';
 import {
   AssistantDomainError,
   createPropertyForGroup,
@@ -78,13 +81,14 @@ if (process.env.NODE_ENV === 'production') {
 // Auth Routes
 app.post('/api/auth/signup', async (req, res) => {
   try {
-    const { name, email, password } = parseBuyerSignupInput(req.body);
+    const { name, email, password, phone } = parseBuyerSignupInput(req.body);
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.$transaction(async (transaction) => {
       const createdUser = await transaction.user.create({
         data: {
           name,
           email,
+          phone: phone || null,
           passwordHash: hashedPassword,
           role: 'primary_buyer',
           profileSlug: `buyer-${crypto.randomUUID()}`,
@@ -108,7 +112,7 @@ app.post('/api/auth/signup', async (req, res) => {
     });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET);
-    res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone } });
   } catch (error: unknown) {
     if (error instanceof SignupInputError) return res.status(400).json({ error: error.message });
     if (isUniqueSignupConflict(error)) return res.status(409).json({ error: 'An account with that email already exists. Sign in instead.' });
@@ -119,21 +123,42 @@ app.post('/api/auth/signup', async (req, res) => {
 
 app.post('/api/auth/advertiser-signup', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, phone } = req.body;
     if (typeof name !== 'string' || name.trim().length < 2 || typeof email !== 'string' || typeof password !== 'string' || password.length < 8) {
       return res.status(400).json({ error: 'Name, valid email, and password of at least 8 characters are required' });
     }
-    const user = await prisma.user.create({
-      data: {
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        passwordHash: await bcrypt.hash(password, 10),
-        role: 'advertiser',
-        profileSlug: `advertiser-${crypto.randomUUID()}`,
-      },
+    const normalizedPhone = typeof phone === 'string' && phone.trim() ? normalizePhoneNumber(phone.trim()) : null;
+    const user = await prisma.$transaction(async (transaction) => {
+      const createdUser = await transaction.user.create({
+        data: {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: normalizedPhone,
+          passwordHash: await bcrypt.hash(password, 10),
+          role: 'advertiser',
+          profileSlug: `advertiser-${crypto.randomUUID()}`,
+        },
+      });
+      await transaction.buyerGroup.create({
+        data: {
+          name: `${name.trim()}'s Home Search`,
+          primaryBuyerId: createdUser.id,
+          memberships: {
+            create: {
+              userId: createdUser.id,
+              role: 'buyer',
+              status: 'accepted',
+            },
+          },
+          searchCriteria: {
+            create: {},
+          },
+        },
+      });
+      return createdUser;
     });
     const token = jwt.sign({ userId: user.id }, JWT_SECRET);
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone } });
   } catch (error: any) {
     res.status(400).json({ error: error.code === 'P2002' ? 'An account with that email already exists' : error.message });
   }
@@ -148,7 +173,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     const token = jwt.sign({ userId: user.id }, JWT_SECRET);
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone } });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
@@ -158,7 +183,7 @@ app.get('/api/auth/test-users', async (req, res) => {
   if (!isTestMode()) return res.status(404).json({ error: 'Not found' });
   const users = await prisma.user.findMany({
     where: { email: { in: testAccounts.map(account => account.email) } },
-    select: { id: true, name: true, email: true, role: true },
+    select: { id: true, name: true, email: true, role: true, phone: true },
   });
   const byEmail = new Map(users.map(user => [user.email, user]));
   res.json(testAccounts.map(account => byEmail.get(account.email)).filter(Boolean));
@@ -171,7 +196,7 @@ app.post('/api/auth/test-login', async (req, res) => {
   const user = await prisma.user.findUnique({ where: { email: account.email } });
   if (!user) return res.status(503).json({ error: 'Test accounts are not set up' });
   const token = jwt.sign({ userId: user.id }, JWT_SECRET);
-  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone } });
 });
 
 // Middleware to authenticate
@@ -193,6 +218,16 @@ const authenticate = (req: any, res: any, next: any) => {
 };
 
 app.use('/api/assistant', authenticate, createAssistantRouter(prisma));
+
+// Linq Messaging & Webhooks Router
+const linqRouter = createLinqRouter(prisma);
+app.use('/api/linq', (req: any, res: any, next: any) => {
+  if (req.path === '/status' || req.path === '/webhook') {
+    return next();
+  }
+  return authenticate(req, res, next);
+}, linqRouter);
+app.use('/api/webhooks/linq', linqRouter);
 
 const findMembership = (userId: string, groupId?: string) => prisma.groupMembership.findFirst({
   where: { userId, status: 'accepted', ...(groupId && { groupId }) }
@@ -224,8 +259,41 @@ app.get('/api/me', authenticate, async (req: any, res) => {
   res.json(user);
 });
 
+app.patch('/api/me/profile', authenticate, async (req: any, res) => {
+  try {
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : undefined;
+    const rawPhone = typeof req.body.phone === 'string' ? req.body.phone.trim() : (req.body.phone === null ? null : undefined);
+    
+    const updateData: { name?: string; phone?: string | null } = {};
+    if (name !== undefined) {
+      if (name.length < 2) return res.status(400).json({ error: 'Name must be at least 2 characters' });
+      updateData.name = name;
+    }
+    if (rawPhone !== undefined) {
+      if (rawPhone === null || rawPhone === '') {
+        updateData.phone = null;
+      } else {
+        const normalized = normalizePhoneNumber(rawPhone);
+        if (!normalized || normalized.length < 8) {
+          return res.status(400).json({ error: 'Enter a valid mobile phone number' });
+        }
+        updateData.phone = normalized;
+      }
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.userId },
+      data: updateData,
+    });
+
+    res.json({ id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // Advertising routes
-app.post('/api/advertiser/creative-upload', authenticate, requireRole('advertiser'), (req, res) => {
+app.post('/api/advertiser/creative-upload', authenticate, (req, res) => {
   adCreativeUpload.single('image')(req, res, async (uploadError) => {
     if (uploadError) {
       const message = uploadError instanceof multer.MulterError && uploadError.code === 'LIMIT_FILE_SIZE'
@@ -292,11 +360,11 @@ app.post('/api/ads/:id/click', async (req, res) => {
   res.status(204).end();
 });
 
-app.get('/api/advertiser/campaigns', authenticate, requireRole('advertiser'), async (req: any, res) => {
+app.get('/api/advertiser/campaigns', authenticate, async (req: any, res) => {
   res.json(await prisma.adCampaign.findMany({ where: { advertiserId: req.userId }, orderBy: { createdAt: 'desc' } }));
 });
 
-app.post('/api/advertiser/campaigns', authenticate, requireRole('advertiser'), async (req: any, res) => {
+app.post('/api/advertiser/campaigns', authenticate, async (req: any, res) => {
   try {
     const data = parseCampaign(req.body);
     res.status(201).json(await prisma.adCampaign.create({ data: { ...data, advertiserId: req.userId } }));
@@ -305,7 +373,7 @@ app.post('/api/advertiser/campaigns', authenticate, requireRole('advertiser'), a
   }
 });
 
-app.patch('/api/advertiser/campaigns/:id', authenticate, requireRole('advertiser'), async (req: any, res) => {
+app.patch('/api/advertiser/campaigns/:id', authenticate, async (req: any, res) => {
   try {
     const existing = await prisma.adCampaign.findFirst({ where: { id: req.params.id, advertiserId: req.userId } });
     if (!existing) return res.status(404).json({ error: 'Campaign not found' });
@@ -316,7 +384,7 @@ app.patch('/api/advertiser/campaigns/:id', authenticate, requireRole('advertiser
   }
 });
 
-app.post('/api/advertiser/campaigns/:id/submit', authenticate, requireRole('advertiser'), async (req: any, res) => {
+app.post('/api/advertiser/campaigns/:id/submit', authenticate, async (req: any, res) => {
   const existing = await prisma.adCampaign.findFirst({ where: { id: req.params.id, advertiserId: req.userId } });
   if (!existing) return res.status(404).json({ error: 'Campaign not found' });
   if (!['draft', 'rejected', 'paused'].includes(existing.status)) return res.status(409).json({ error: 'Campaign cannot be submitted in its current state' });
@@ -345,14 +413,14 @@ app.patch('/api/admin/campaigns/:id', authenticate, requireRole('admin'), async 
 });
 
 app.get('/api/searches', authenticate, async (req: any, res) => {
-  const memberships = await prisma.groupMembership.findMany({
+  let memberships = await prisma.groupMembership.findMany({
     where: { userId: req.userId, status: 'accepted' },
     include: {
       group: {
         include: {
           memberships: {
             where: { status: 'accepted' },
-            include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
+            include: { user: { select: { id: true, name: true, email: true, phone: true, avatar: true } } },
             orderBy: { role: 'asc' }
           },
           _count: { select: { properties: true } }
@@ -361,6 +429,37 @@ app.get('/api/searches', authenticate, async (req: any, res) => {
     },
     orderBy: { group: { createdAt: 'asc' } }
   });
+
+  if (memberships.length === 0) {
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (user) {
+      await prisma.buyerGroup.create({
+        data: {
+          name: `${user.name}'s Home Search`,
+          primaryBuyerId: user.id,
+          memberships: { create: { userId: user.id, role: 'buyer', status: 'accepted' } },
+          searchCriteria: { create: {} }
+        },
+      });
+
+      memberships = await prisma.groupMembership.findMany({
+        where: { userId: req.userId, status: 'accepted' },
+        include: {
+          group: {
+            include: {
+              memberships: {
+                where: { status: 'accepted' },
+                include: { user: { select: { id: true, name: true, email: true, phone: true, avatar: true } } },
+                orderBy: { role: 'asc' }
+              },
+              _count: { select: { properties: true } }
+            }
+          }
+        },
+        orderBy: { group: { createdAt: 'asc' } }
+      });
+    }
+  }
 
   res.json(memberships.map(({ group, role }) => ({
     id: group.id,
@@ -389,7 +488,7 @@ app.post('/api/searches', authenticate, async (req: any, res) => {
         searchCriteria: { create: {} }
       },
       include: {
-        memberships: { include: { user: { select: { id: true, name: true, email: true, avatar: true } } } }
+        memberships: { include: { user: { select: { id: true, name: true, email: true, phone: true, avatar: true } } } }
       }
     });
     res.status(201).json({
@@ -409,8 +508,18 @@ app.post('/api/searches', authenticate, async (req: any, res) => {
 app.post('/api/invites', authenticate, async (req: any, res) => {
   try {
     const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    const { role, searchId } = req.body;
+    const rawPhone = typeof req.body.phone === 'string' && req.body.phone.trim() ? req.body.phone.trim() : undefined;
+    const { role, searchId, channel } = req.body;
     if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address' });
+
+    let phone: string | undefined = undefined;
+    if (rawPhone) {
+      const normalized = normalizePhoneNumber(rawPhone);
+      if (!normalized || normalized.length < 8) {
+        return res.status(400).json({ error: 'Enter a valid mobile phone number' });
+      }
+      phone = normalized;
+    }
 
     const membership = await prisma.groupMembership.findFirst({
       where: { userId: req.userId, role: 'buyer', ...(searchId && { groupId: searchId }) },
@@ -429,9 +538,10 @@ app.post('/api/invites', authenticate, async (req: any, res) => {
       data: {
         groupId: membership.groupId,
         invitedEmail: email,
+        invitedPhone: phone,
         invitedRole,
         token,
-        channel: 'email',
+        channel: channel === 'sms' || phone ? 'sms' : 'email',
         expiresAt,
         invitedByUserId: req.userId,
       },
@@ -454,6 +564,22 @@ app.post('/api/invites', authenticate, async (req: any, res) => {
       delivery = { sent: false, reason: 'delivery_failed' };
     }
 
+    let smsDelivery;
+    if (phone) {
+      try {
+        smsDelivery = await sendInvitationSmsMessage({
+          to: phone,
+          inviterName: membership.user.name,
+          searchName: membership.group.name,
+          inviteLink,
+          expiresAt,
+        });
+      } catch (error) {
+        console.error('Invitation SMS delivery failed:', error);
+        smsDelivery = { success: false, error: 'delivery_failed' };
+      }
+    }
+
     const emailDraftAlternatives = delivery.sent ? undefined : buildInvitationWebmailDrafts({
       to: email,
       inviterName: membership.user.name,
@@ -466,6 +592,8 @@ app.post('/api/invites', authenticate, async (req: any, res) => {
     res.status(201).json({
       invite,
       emailSent: delivery.sent,
+      smsSent: smsDelivery?.success ?? false,
+      invitedPhone: phone,
       emailDraftUrl: emailDraftAlternatives?.[0]?.url,
       emailDraftAlternatives,
     });
@@ -487,10 +615,17 @@ app.get('/api/invites/:token', async (req, res) => {
 
 app.post('/api/invites/accept', async (req, res) => {
   try {
-    const { token, name, password } = req.body;
+    const { token, name, password, phone: bodyPhone } = req.body;
     const invite = await prisma.invitation.findUnique({ where: { token } });
     if (!invite || invite.status !== 'pending' || invite.expiresAt < new Date()) {
       return res.status(404).json({ error: 'Invalid or expired invitation' });
+    }
+
+    let userPhone: string | null = null;
+    if (typeof bodyPhone === 'string' && bodyPhone.trim()) {
+      userPhone = normalizePhoneNumber(bodyPhone.trim()) || null;
+    } else if (invite.invitedPhone) {
+      userPhone = normalizePhoneNumber(invite.invitedPhone) || null;
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -498,10 +633,13 @@ app.post('/api/invites/accept', async (req, res) => {
 
     const user = await prisma.user.upsert({
       where: { email: invite.invitedEmail },
-      update: {},
+      update: {
+        ...(userPhone ? { phone: userPhone } : {}),
+      },
       create: {
         name,
         email: invite.invitedEmail,
+        phone: userPhone,
         passwordHash: hashedPassword,
         role: invite.invitedRole,
         profileSlug: slug,
@@ -533,7 +671,7 @@ app.post('/api/invites/accept', async (req, res) => {
     });
 
     const authToken = jwt.sign({ userId: user.id }, JWT_SECRET);
-    res.json({ token: authToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    res.json({ token: authToken, user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone } });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
@@ -1303,6 +1441,7 @@ const shutdown = (signal: NodeJS.Signals) => {
   forceExit.unref();
 
   const finish = async () => {
+    stopLinqWebhookListener();
     await prisma.$disconnect();
     process.exit(0);
   };
@@ -1332,6 +1471,7 @@ const startServer = async () => {
     httpServer = app.listen(PORT, () => {
       httpServer?.off('error', handleError);
       console.log(`Server running on http://localhost:${PORT}`);
+      startLinqWebhookListener({ port: Number(PORT) });
       resolve();
     });
     httpServer.once('error', handleError);

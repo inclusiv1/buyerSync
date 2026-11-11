@@ -15,6 +15,8 @@
     "dev:frontend": "vite",
     "dev:server": "tsx watch server/index.ts",
     "dev:listing-search": "python3 services/homeharvest/bootstrap.py",
+    "dev:linq": "linq webhooks listen --forward-to http://localhost:${PORT:-3001}/api/webhooks/linq",
+    "linq:listen": "linq webhooks listen --forward-to http://localhost:${PORT:-3001}/api/webhooks/linq",
     "test:listing-search": "python3 -m unittest services/homeharvest/server_test.py",
     "build": "npm run build:frontend",
     "build:frontend": "tsc -b && vite build",

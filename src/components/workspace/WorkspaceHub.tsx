@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Clock3, GitCompareArrows, Mail, Pencil, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, Clock3, GitCompareArrows, Mail, Pencil, SlidersHorizontal, Phone, MessageSquare } from 'lucide-react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import ProductAreaTabs, { type ProductArea } from '@/components/navigation/Produ
 
 type Note = { id: string; body: string; visitDate?: string | null; author?: { name?: string } };
 type Property = { id: string; address: string; price?: number | null; hoa?: number | null; score?: number | null; hasVeto?: boolean; notes?: Note[] };
-type Contributor = { id: string; name: string; email: string; role: string; avatar?: string | null };
+type Contributor = { id: string; name: string; email: string; phone?: string | null; role: string; avatar?: string | null };
 
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
@@ -92,7 +92,48 @@ export default function WorkspaceHub({ properties, contributors, rate, selectedI
         </TabsContent>
 
         <TabsContent value="team" className="m-0 p-5 md:p-7">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{contributors.map(contributor => <div key={contributor.id} className="flex items-center gap-4 border border-foreground/10 p-4"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/10 font-serif text-xl text-primary">{contributor.name.charAt(0).toUpperCase()}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{contributor.name}</p><p className="mt-1 truncate text-xs text-muted-foreground">{contributor.email}</p></div><span className="text-[0.55rem] font-medium uppercase tracking-wider text-primary">{contributor.role.replace('_', ' ')}</span></div>)}<button type="button" onClick={() => document.getElementById('invite-team')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} className="flex min-h-20 items-center justify-center gap-2 border border-dashed border-primary/30 p-4 text-sm font-medium text-primary transition hover:bg-primary/5"><Mail className="h-4 w-4" /> Invite someone you trust</button></div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {contributors.map(contributor => (
+              <div key={contributor.id} className="flex flex-col justify-between border border-foreground/10 bg-background/50 p-4 transition hover:border-primary/40">
+                <div className="flex items-start gap-3.5">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/10 font-serif text-xl text-primary">
+                    {contributor.name.charAt(0).toUpperCase()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-sm font-semibold">{contributor.name}</p>
+                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[0.6rem] font-medium uppercase tracking-wider text-primary">
+                        {contributor.role.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{contributor.email}</p>
+                    {contributor.phone ? (
+                      <div className="mt-2 flex items-center gap-1.5 text-xs text-primary font-medium">
+                        <Phone className="h-3 w-3" />
+                        <span>{contributor.phone}</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.2 text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                          SMS active
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-[11px] text-muted-foreground/70">
+                        Email only · (No phone linked)
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => document.getElementById('invite-team')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+              className="flex min-h-24 items-center justify-center gap-2 border border-dashed border-primary/30 p-4 text-sm font-medium text-primary transition hover:bg-primary/5"
+            >
+              <Mail className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4" />
+              <span>Invite via Email &amp; SMS</span>
+            </button>
+          </div>
         </TabsContent>
       </Tabs>
     </section>

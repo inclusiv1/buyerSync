@@ -7,7 +7,17 @@ import api from '@/lib/api';
 import { DecisionCriteriaManager } from '@/components/decision/DecisionCriteriaManager';
 import ClientHeader from '@/components/navigation/ClientHeader';
 
-const PROPERTY_TYPES = ['Single Family', 'Condo', 'Townhouse', 'Manufactured', 'Multi-Family', 'Apartment', 'Land'];
+const PROPERTY_TYPES = [
+  { label: 'Houses', value: 'Single Family' },
+  { label: 'Townhomes', value: 'Townhouse' },
+  { label: 'Multi-family', value: 'Multi-Family' },
+  { label: 'Condos/Co-ops', value: 'Condo' },
+  { label: 'Lots/Land', value: 'Land' },
+  { label: 'Apartments', value: 'Apartment' },
+  { label: 'Manufactured', value: 'Manufactured' },
+];
+const LISTING_TYPES = ['By Agent', 'By Owner', 'New Construction', 'Foreclosures', 'Coming Soon', 'Auction', 'Accepted Offer'];
+const HOME_FEATURES = ['Parking', 'Garage', 'Basement', 'Single Story', 'Pool', 'Waterfront', 'Air Conditioning', 'Fireplace', '3D or video tour', 'Open House', 'Price Reduced'];
 
 const Checklist = () => {
   const queryClient = useQueryClient();
@@ -36,11 +46,11 @@ const Checklist = () => {
     const formData = new FormData(e.currentTarget);
     const data: any = {};
     formData.forEach((value, key) => {
-      if (key === 'propertyTypes') return;
+      if (key === 'propertyTypes' || key === 'listingTypes' || key === 'homeFeatures') return;
       if (value) {
-        if (key === 'location' || key === 'status') {
+        if (key === 'location' || key === 'status' || key === 'keywords') {
           data[key] = value as string;
-        } else if (key === 'minBeds' || key === 'yearBuiltMin' || key === 'yearBuiltMax' || key === 'schoolRating' || key === 'daysOld') {
+        } else if (key === 'minBeds' || key === 'maxBeds' || key === 'yearBuiltMin' || key === 'yearBuiltMax' || key === 'schoolRating' || key === 'daysOld') {
           data[key] = parseInt(value as string);
         } else {
           data[key] = parseFloat(value as string);
@@ -49,8 +59,12 @@ const Checklist = () => {
         data[key] = null;
       }
     });
-    const propertyTypes = formData.getAll('propertyTypes') as string[];
-    data.propertyTypes = propertyTypes.length ? propertyTypes : null;
+    if (showMore) {
+      for (const field of ['propertyTypes', 'listingTypes', 'homeFeatures']) {
+        const values = formData.getAll(field) as string[];
+        data[field] = values.length ? values : null;
+      }
+    }
     updateCriteriaMutation.mutate(data);
   };
 
@@ -163,6 +177,16 @@ const Checklist = () => {
                       />
                     </div>
                     <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-slate-500">Max Beds</label>
+                      <Input
+                        name="maxBeds"
+                        type="number"
+                        min="0"
+                        placeholder="Any"
+                        defaultValue={criteria?.maxBeds}
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <label className="text-xs font-bold uppercase text-slate-500">Min Sqft</label>
                       <Input 
                         name="minSqft"
@@ -238,20 +262,46 @@ const Checklist = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase text-slate-500">Property Types</label>
+                    <label className="text-xs font-bold uppercase text-slate-500">Home Types</label>
                     <div className="flex flex-wrap gap-3">
-                      {PROPERTY_TYPES.map((type) => (
-                        <label key={type} className="flex items-center gap-2 text-sm">
+                      {PROPERTY_TYPES.map(({ label, value }) => (
+                        <label key={value} className="flex items-center gap-2 text-sm">
                           <input
                             type="checkbox"
                             name="propertyTypes"
-                            value={type}
-                            defaultChecked={criteria?.propertyTypes?.includes(type)}
+                            value={value}
+                            defaultChecked={criteria?.propertyTypes?.includes(value)}
                           />
-                          {type}
+                          {label}
                         </label>
                       ))}
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase text-slate-500">Listing Types</label>
+                    <div className="flex flex-wrap gap-3">
+                      {LISTING_TYPES.map((type) => (
+                        <label key={type} className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" name="listingTypes" value={type} defaultChecked={criteria?.listingTypes?.includes(type)} />
+                          {type === 'By Agent' ? 'For Sale by Agent' : type}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase text-slate-500">Home Features</label>
+                    <div className="flex flex-wrap gap-3">
+                      {HOME_FEATURES.map((feature) => (
+                        <label key={feature} className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" name="homeFeatures" value={feature} defaultChecked={criteria?.homeFeatures?.includes(feature)} />
+                          {feature}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="max-w-md space-y-2">
+                    <label className="text-xs font-bold uppercase text-slate-500">Keywords</label>
+                    <Input name="keywords" type="text" placeholder="e.g. renovated kitchen" defaultValue={criteria?.keywords} />
                   </div>
                 </div>
               )}

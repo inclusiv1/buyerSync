@@ -14,6 +14,7 @@ import AuthLayout from '@/components/auth/AuthLayout';
 const signupSchema = z.object({
   name: z.string().trim().min(2, 'Enter your full name'),
   email: z.string().trim().toLowerCase().email('Enter a valid email address'),
+  phone: z.string().trim().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
@@ -22,7 +23,7 @@ const Signup = () => {
   const navigate = useNavigate();
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { name: '', email: '', password: '' },
+    defaultValues: { name: '', email: '', phone: '', password: '' },
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +84,25 @@ const Signup = () => {
                     <FormControl>
                       <Input type="email" autoComplete="email" placeholder="you@example.com" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }: any) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Mobile Phone</FormLabel>
+                      <span className="text-[11px] text-champagne/80 font-medium">iMessage & SMS alerts</span>
+                    </div>
+                    <FormControl>
+                      <Input type="tel" autoComplete="tel" placeholder="(555) 000-0000" {...field} />
+                    </FormControl>
+                    <p className="text-[11px] text-white/45">
+                      Optional: Receive real-time property updates, listing cards, and query search status directly via text.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

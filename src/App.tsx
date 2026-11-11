@@ -34,7 +34,6 @@ const RoleLanding = () => {
   const { token, user } = useAuthStore();
   if (!token) return isTestMode ? <Navigate to="/login" replace /> : <Landing />;
   if (token && !user) return <div className="p-10 text-center">Loading account…</div>;
-  if (user?.role === 'advertiser') return <Navigate to="/advertiser" replace />;
   if (user?.role === 'admin') return <Navigate to="/admin/ads" replace />;
   return <Dashboard />;
 };
@@ -69,8 +68,8 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/advertise/signup" element={<AdvertiserSignup />} />
-          <Route path="/advertise" element={<ProtectedRoute roles={['advertiser']}><AdvertisingPortal /></ProtectedRoute>} />
-          <Route path="/advertiser" element={<ProtectedRoute roles={['advertiser']}><AdvertisingPortal /></ProtectedRoute>} />
+          <Route path="/advertise" element={<ProtectedRoute><AdvertisingPortal /></ProtectedRoute>} />
+          <Route path="/advertiser" element={<ProtectedRoute><AdvertisingPortal /></ProtectedRoute>} />
           <Route path="/admin/ads" element={<ProtectedRoute roles={['admin']}><AdvertisingPortal admin /></ProtectedRoute>} />
           <Route path="/invite/:token" element={<Invite />} />
           <Route path="/" element={<RoleLanding />} />

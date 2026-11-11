@@ -7,6 +7,7 @@
 - `src/domain/financials.ts` is the pure outflow engine. It calculates amortized principal/interest, taxes, insurance, HOA, utilities, CapEx totals, and true total investment.
 - `src/services/decisionApi.ts` is the typed transport boundary. Components do not construct decision-support endpoint URLs or Axios calls directly.
 - `src/services/assistantApi.ts` is the typed Search Copilot transport boundary. `server/routes/assistant.ts` owns authenticated persistence and orchestration; `server/services/assistant/` owns provider-neutral generation, structured retrieval, policy, citations, and fallback.
+- `server/services/linq.ts` and `server/routes/linq.ts` own the Linq conversational messaging transport boundary for bidirectional iMessage, RCS, SMS fallback, listing alerts, decision updates, and webhook ingestion.
 - `server/mcp/` is the allowlisted tool boundary. MCP handlers call authorized domain services directly and never loop back through the public HTTP API.
 
 ## Component tree
@@ -59,6 +60,24 @@ Listing descriptions, public pages, user text, and tool output are untrusted dat
 Gemini is behind the application-owned `AssistantProvider` interface and is limited by timeout, output-token, tool-call, write, and request-rate settings. Missing credentials, quota failures, timeouts, and orchestration errors enter deterministic fallback, which can parse supported criteria and retrieve the current checklist, saved-home ranking, and public links without generated prose.
 
 The MVP uses structured relational retrieval because current data is small, group-scoped, and visibility-sensitive. `Retriever` is the extension boundary for future group-authorized document RAG. PDF parsing, chunks, embeddings, citation spans, deletion/re-indexing, managed retrieval, a second hosted provider, and local inference remain out of scope; any later adapter must retain the same authorization, MCP allowlist, policy checks, and fallback.
+
+## Linq Conversational Messaging flow
+
+```text
+Phone (iMessage/SMS) ──> Linq Platform ──> POST /api/webhooks/linq ──> processInboundLinqMessage
+                                                                            │
+                                                                            ├──> Normalizes Phone (E.164)
+                                                                            ├──> Resolves User & Active BuyerGroup
+                                                                            ├──> Short Commands (status, top, search, help)
+                                                                            └──> Search Copilot LLM Chatbot
+                                                                                    ├──> AssistantThread (SMS Context)
+                                                                                    ├──> MCP Tool Registry (Search, Rank, Criteria)
+                                                                                    ├──> Gemini / Fallback Turn Runner
+                                                                                    └──> Sends clean response via sendLinqMessage
+Express API (Alerts/Invites) ──> sendLinqMessage ──> Linq REST API ──> Apple Infrastructure ──> Recipient Phone
+```
+
+Linq provides the conversational transport layer for real-time mobile notifications and an intelligent SMS real estate chatbot. Inbound messages are processed securely via HMAC signature verification (`x-linq-signature` / `x-webhook-signature`), matched against normalized user phone numbers (`User.phone`), and routed to the Search Copilot AI engine. Natural language queries, property comparisons, and advice prompts execute bounded LLM turns with MCP tool execution, maintaining thread conversation history in `AssistantThread` and `AssistantMessage` and returning concise, well-formatted replies over SMS/iMessage. Fast command shortcuts (`status`, `top`, `search <city/zip>`, `help`) provide instant structured answers. Outbound listing alerts and decision reveals format structured cards with full-screen effects (`confetti`, `sparkles`, `celebration`) and photo attachments. Multi-user collaboration ensures that when co-buyers or agents are whitelisted and registered, each participant receives tailored group search updates and alert dispatches.
 
 ## Persistence model
 

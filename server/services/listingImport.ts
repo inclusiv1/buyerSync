@@ -81,6 +81,28 @@ function numberValue(value: unknown): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function stringList(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const values = value.filter((item): item is string => typeof item === 'string').map(item => item.trim()).filter(Boolean);
+    return values.length ? values : undefined;
+  }
+  if (typeof value === 'string') {
+    const values = value.split(/[,;|]/).map(item => item.trim()).filter(Boolean);
+    return values.length ? values : undefined;
+  }
+  if (value && typeof value === 'object') {
+    const values = Object.entries(value as Record<string, unknown>)
+      .filter(([, enabled]) => enabled === true)
+      .map(([name]) => name);
+    return values.length ? values : undefined;
+  }
+  return undefined;
+}
+
+function enabled(value: unknown): boolean {
+  return value === true || value === 1 || (typeof value === 'string' && ['true', 'yes', '1'].includes(value.trim().toLowerCase()));
+}
+
 function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
@@ -126,6 +148,36 @@ export function normalizeProviderPayload(payload: unknown, sourceUrl?: string): 
     .slice(0, 50);
   const fullBaths = numberValue(value.full_baths);
   const halfBaths = numberValue(value.half_baths);
+  const listingTypes = stringList(firstValue(value.listingTypes, value.listing_types, value.listing_subtype, value.listingSubType, value.sale_types, value.sale_type)) || [];
+  const homeFeatures = stringList(firstValue(value.homeFeatures, value.home_features, value.features, value.amenities)) || [];
+  const listingTypeFlags: Array<[string, string[]]> = [
+    ['By Agent', ['by_agent', 'is_by_agent']],
+    ['By Owner', ['by_owner', 'is_by_owner']],
+    ['New Construction', ['new_construction', 'is_new_construction']],
+    ['Foreclosures', ['foreclosure', 'is_foreclosure']],
+    ['Coming Soon', ['coming_soon', 'is_coming_soon']],
+    ['Auction', ['auction', 'is_auction']],
+    ['Accepted Offer', ['accepted_offer', 'is_accepted_offer']],
+  ];
+  const homeFeatureFlags: Array<[string, string[]]> = [
+    ['Parking', ['parking', 'has_parking', 'parking_available']],
+    ['Garage', ['garage', 'has_garage']],
+    ['Basement', ['basement', 'has_basement']],
+    ['Single Story', ['single_story', 'one_story']],
+    ['Pool', ['pool', 'has_pool', 'swimming_pool']],
+    ['Waterfront', ['waterfront', 'is_waterfront', 'lakefront']],
+    ['Air Conditioning', ['air_conditioning', 'airConditioning', 'has_ac', 'ac']],
+    ['Fireplace', ['fireplace', 'has_fireplace']],
+    ['3D or video tour', ['three_d_tour', 'has_3d_tour', 'virtual_tour', 'video_tour']],
+    ['Open House', ['open_house', 'has_open_house']],
+    ['Price Reduced', ['price_reduced', 'is_price_reduced']],
+  ];
+  for (const [label, keys] of listingTypeFlags) {
+    if (keys.some(key => enabled(value[key]))) listingTypes.push(label);
+  }
+  for (const [label, keys] of homeFeatureFlags) {
+    if (keys.some(key => enabled(value[key]))) homeFeatures.push(label);
+  }
   const bathrooms = numberValue(firstValue(value.baths, value.bathrooms))
     ?? (fullBaths !== undefined ? fullBaths + (halfBaths || 0) * 0.5 : undefined);
 
@@ -139,8 +191,11 @@ export function normalizeProviderPayload(payload: unknown, sourceUrl?: string): 
     baths: bathrooms,
     sqft: numberValue(firstValue(value.sqft, value.squareFeet, value.squareFootage, value.square_feet, value.livingArea, value.living_area)),
     yearBuilt: numberValue(firstValue(value.yearBuilt, value.year_built)),
+    daysOld: numberValue(firstValue(value.daysOld, value.days_old, value.days_on_market, value.daysOnMarket)),
     lotSize: numberValue(firstValue(value.lotSize, value.lot_size, value.lot_sqft, value.lotAcres, value.lot_acres)),
     propertyType: stringValue(firstValue(value.propertyType, value.property_type, value.style)),
+    listingTypes: [...new Set(listingTypes)],
+    homeFeatures: [...new Set(homeFeatures)],
     hoa: numberValue(firstValue(value.hoa, value.hoaFee, value.hoa_fee)),
     mlsId: stringValue(firstValue(value.mlsId, value.mls_id, value.listing_id, value.mls, value.id)),
     description: stringValue(firstValue(value.description, value.text)),

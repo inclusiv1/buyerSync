@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { authStorage } from '@/lib/authStorage';
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;
   role: string;
+  phone?: string | null;
 }
 
 interface AuthState {

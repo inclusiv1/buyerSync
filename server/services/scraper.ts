@@ -13,8 +13,11 @@ export interface PropertyData {
   photos?: string[];
   description?: string;
   yearBuilt?: number;
+  daysOld?: number;
   lotSize?: number;
   propertyType?: string;
+  listingTypes?: string[];
+  homeFeatures?: string[];
   hoa?: number;
   mlsId?: string;
   sourceUrl?: string;

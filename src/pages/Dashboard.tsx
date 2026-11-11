@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
-import { Plus, Home, Users, Settings, Pencil, Trash2, GitCompareArrows, ArrowRight, Sparkles, Search, ExternalLink, Mail } from 'lucide-react';
+import { Plus, Home, Users, Settings, Pencil, Trash2, GitCompareArrows, ArrowRight, Sparkles, Search, ExternalLink, Mail, Phone, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { PropertyEditForm } from '@/pages/PropertyDetail';
 import { PropertyMap } from '@/components/property/PropertyMap';
 import { AdSlot } from '@/components/advertising/AdSlot';
@@ -407,6 +407,8 @@ const Dashboard = () => {
     requestedArea === 'financials' || requestedArea === 'tours' || requestedArea === 'team' ? requestedArea : 'decisions'
   );
   const [inviteEmail, setInviteEmail] = useState('');
+  const [invitePhone, setInvitePhone] = useState('');
+  const [inviteRole, setInviteRole] = useState<'co_buyer' | 'agent'>('co_buyer');
   const [inviteEmailDraftUrl, setInviteEmailDraftUrl] = useState('');
   const [inviteEmailAlternatives, setInviteEmailAlternatives] = useState<Array<{ provider: string; url: string }>>([]);
   const [inviteMessage, setInviteMessage] = useState('');
@@ -494,15 +496,31 @@ const Dashboard = () => {
     setInviteEmailAlternatives([]);
     setIsSendingInvite(true);
     try {
-      const { data } = await api.post('/invites', { email: inviteEmail, searchId: selectedSearchId });
-      if (data.emailSent) {
-        setInviteMessage(`Invitation email sent to ${inviteEmail}.`);
-        setInviteEmail('');
+      const { data } = await api.post('/invites', {
+        email: inviteEmail,
+        phone: invitePhone.trim() || undefined,
+        role: inviteRole,
+        searchId: selectedSearchId,
+      });
+
+      let message = '';
+      if (data.emailSent && data.smsSent) {
+        message = `Invitation sent to ${inviteEmail} via email and delivered via SMS/iMessage to ${data.invitedPhone}.`;
+      } else if (data.smsSent) {
+        message = `Invitation SMS/iMessage sent to ${data.invitedPhone}.`;
+      } else if (data.emailSent) {
+        message = `Invitation email sent to ${inviteEmail}.`;
       } else if (data.emailDraftUrl) {
         setInviteEmailDraftUrl(data.emailDraftUrl);
         setInviteEmailAlternatives(data.emailDraftAlternatives || []);
-        setInviteMessage('Direct email delivery is not configured. Choose your webmail service to open the prepared invitation, then press Send.');
+        message = 'Direct email delivery is not configured. Choose your webmail service to open the prepared invitation, then press Send.';
+      } else {
+        message = `Invitation created for ${inviteEmail}.`;
       }
+      setInviteMessage(message);
+      setInviteEmail('');
+      setInvitePhone('');
+      queryClient.invalidateQueries({ queryKey: ['searches'] });
     } catch (err: any) {
       setInviteError(err?.response?.data?.error || 'Could not create the invitation. Please try again.');
     } finally {
@@ -736,25 +754,97 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t">
           <Card id="invite-team">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" /> Your team
-              </CardTitle>
-              <CardDescription>Invite co-buyers or your agent to join {activeSearch?.name || 'this search'}.</CardDescription>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" /> Your team
+                </CardTitle>
+                <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                  <MessageSquare className="h-3 w-3" /> iMessage & SMS Ready
+                </span>
+              </div>
+              <CardDescription>Invite co-buyers or your agent to join {activeSearch?.name || 'this search'} via email and text message.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input 
-                  placeholder="Email address" 
-                  type="email"
-                  value={inviteEmail} 
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteEmail(e.target.value)} 
-                />
-                <Button className="gap-2 whitespace-nowrap" onClick={sendInvite} disabled={!inviteEmail.trim() || !selectedSearchId || isSendingInvite}>
-                  <Mail className="h-4 w-4" /> {isSendingInvite ? 'Sending…' : 'Send email'}
+              <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-1 text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => setInviteRole('co_buyer')}
+                  className={`rounded-md py-1.5 transition ${inviteRole === 'co_buyer' ? 'bg-background shadow font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Co-Buyer (Co-decision)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInviteRole('agent')}
+                  className={`rounded-md py-1.5 transition ${inviteRole === 'agent' ? 'bg-background shadow font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Agent (Advisory)
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-foreground">Email address</label>
+                  <Input 
+                    placeholder="partner@example.com" 
+                    type="email"
+                    value={inviteEmail} 
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteEmail(e.target.value)} 
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-foreground">Mobile Phone (optional for SMS/iMessage)</label>
+                    <span className="text-[10px] text-muted-foreground">E.164 or US format</span>
+                  </div>
+                  <div className="relative mt-1">
+                    <Phone className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="(555) 000-0000" 
+                      type="tel"
+                      value={invitePhone} 
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInvitePhone(e.target.value)} 
+                      className="pl-9"
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Adding a phone number sends an SMS invite and enables live listing alerts with visual effects plus conversational text search.
+                  </p>
+                </div>
+
+                <Button 
+                  className="w-full gap-2" 
+                  onClick={sendInvite} 
+                  disabled={!inviteEmail.trim() || !selectedSearchId || isSendingInvite}
+                >
+                  {isSendingInvite ? (
+                    'Sending invitation…'
+                  ) : invitePhone.trim() ? (
+                    <>
+                      <Mail className="h-4 w-4" />
+                      <MessageSquare className="h-4 w-4" />
+                      Send Email &amp; SMS Invite
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4" />
+                      Send Email Invite
+                    </>
+                  )}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Sending as {user?.name} ({user?.email}). Replies will go to this email address.</p>
-              {inviteMessage && <p className="text-sm text-primary" role="status">{inviteMessage}</p>}
+
+              <p className="text-xs text-muted-foreground">Sending from {user?.name} ({user?.email}).</p>
+
+              {inviteMessage && (
+                <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-primary" role="status">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{inviteMessage}</span>
+                </div>
+              )}
+
               {inviteEmailDraftUrl && inviteEmailAlternatives.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {inviteEmailAlternatives.map((draft) => (
@@ -766,6 +856,7 @@ const Dashboard = () => {
                   ))}
                 </div>
               )}
+
               {inviteError && <p className="text-sm text-red-600" role="alert">{inviteError}</p>}
             </CardContent>
           </Card>

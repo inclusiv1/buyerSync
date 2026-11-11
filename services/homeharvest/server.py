@@ -16,7 +16,16 @@ ALLOWED_FIELDS = {
     "min_price",
     "max_price",
     "min_beds",
+    "max_beds",
     "min_baths",
+    "min_sqft",
+    "max_sqft",
+    "lot_size_min",
+    "lot_size_max",
+    "year_built_min",
+    "year_built_max",
+    "days_old",
+    "foreclosure",
     "property_type",
 }
 
@@ -34,6 +43,15 @@ def optional_number(payload: dict[str, Any], name: str, *, integer: bool = False
     if integer and not float(value).is_integer():
         raise RequestError(f"{name} must be an integer")
     return int(value) if integer else value
+
+
+def optional_bool(payload: dict[str, Any], name: str) -> bool | None:
+    value = payload.get(name)
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise RequestError(f"{name} must be a boolean")
+    return value
 
 
 def parse_search(payload: Any) -> tuple[dict[str, Any], str | None]:
@@ -69,7 +87,16 @@ def parse_search(payload: Any) -> tuple[dict[str, Any], str | None]:
         "price_min": min_price,
         "price_max": max_price,
         "beds_min": optional_number(payload, "min_beds", integer=True),
+        "beds_max": optional_number(payload, "max_beds", integer=True),
         "baths_min": optional_number(payload, "min_baths"),
+        "sqft_min": optional_number(payload, "min_sqft", integer=True),
+        "sqft_max": optional_number(payload, "max_sqft", integer=True),
+        "lot_size_min": optional_number(payload, "lot_size_min"),
+        "lot_size_max": optional_number(payload, "lot_size_max"),
+        "year_built_min": optional_number(payload, "year_built_min", integer=True),
+        "year_built_max": optional_number(payload, "year_built_max", integer=True),
+        "past_days": optional_number(payload, "days_old", integer=True),
+        "foreclosure": optional_bool(payload, "foreclosure"),
     }
     return {key: value for key, value in arguments.items() if value is not None}, property_type.strip() if property_type else None
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { searchCriteriaPatchSchema, rentCastPropertyTypes } from '../services/assistant/contracts';
+import { homeFeatureOptions, listingTypeOptions, searchCriteriaPatchSchema, rentCastPropertyTypes } from '../services/assistant/contracts';
 
 const emptyInputSchema = z.object({}).strict();
 const httpUrlSchema = z.string().url().max(2_048).refine((value) => {
@@ -17,8 +17,11 @@ const searchResultListingSchema = z.object({
   baths: z.number().finite().nonnegative().optional(),
   sqft: z.number().finite().nonnegative().optional(),
   yearBuilt: z.number().int().min(1000).max(3000).optional(),
+  daysOld: z.number().int().nonnegative().optional(),
   lotSize: z.number().finite().nonnegative().optional(),
   propertyType: z.string().trim().max(100).optional(),
+  listingTypes: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
+  homeFeatures: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
   hoa: z.number().finite().nonnegative().optional(),
   mlsId: z.string().trim().min(1).max(100).optional(),
   photos: z.array(httpUrlSchema).max(50).optional(),
@@ -41,11 +44,16 @@ export const toolInputSchemas = {
     minPrice: z.number().finite().nonnegative().max(1_000_000_000).optional(),
     maxPrice: z.number().finite().nonnegative().max(1_000_000_000).optional(),
     minBeds: z.number().int().nonnegative().max(100).optional(),
+    maxBeds: z.number().int().nonnegative().max(100).optional(),
     minBaths: z.number().finite().nonnegative().max(100).optional(),
     minSqft: z.number().finite().nonnegative().max(10_000_000).optional(),
     maxSqft: z.number().finite().nonnegative().max(10_000_000).optional(),
     lotSizeMin: z.number().finite().nonnegative().max(1_000_000_000).optional(),
     lotSizeMax: z.number().finite().nonnegative().max(1_000_000_000).optional(),
+    propertyTypes: z.array(z.enum(rentCastPropertyTypes)).max(20).optional(),
+    listingTypes: z.array(z.enum(listingTypeOptions)).max(20).optional(),
+    homeFeatures: z.array(z.enum(homeFeatureOptions)).max(20).optional(),
+    keywords: z.string().trim().max(300).optional(),
     yearBuiltMin: z.number().int().min(1000).max(3000).optional(),
     yearBuiltMax: z.number().int().min(1000).max(3000).optional(),
     daysOld: z.number().int().min(1).max(3650).optional()

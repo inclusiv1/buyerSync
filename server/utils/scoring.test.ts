@@ -67,3 +67,26 @@ test('does not score empty nullable search criteria', () => {
   assert.equal(result.mustHaveGaps, 0);
   assert.deepEqual(result.assessments, []);
 });
+
+test('scores upper bounds for beds, square footage, lot size, and listing age', () => {
+  const result = calculateScore([], [], [], {
+    maxBeds: 4,
+    maxSqft: 2_000,
+    lotSizeMax: 1,
+    daysOld: 30,
+  }, {
+    beds: 5,
+    sqft: 2_200,
+    lotSize: 2,
+    daysOld: 45,
+  });
+
+  assert.equal(result.mustHaveGaps, 4);
+  assert.deepEqual(result.assessments.map((assessment) => assessment.key), [
+    'maxBeds',
+    'maxSqft',
+    'lotSizeMax',
+    'daysOld',
+  ]);
+  assert.ok(result.assessments.every((assessment) => assessment.status === 'gap'));
+});

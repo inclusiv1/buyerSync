@@ -125,7 +125,10 @@ model Property {
   sqft                Float?
   lotSize             Float?
   yearBuilt           Int?
+  daysOld             Int?
   propertyType        String?
+  listingTypes        String? // JSON array
+  homeFeatures        String? // JSON array
   hoa                 Float?
   taxInfo             String?
   photos              String? // JSON array of URLs
@@ -366,10 +369,14 @@ model SearchCriteria {
   minPrice      Float?
   maxPrice      Float?
   minBeds       Int?
+  maxBeds       Int?
   minBaths      Float?
   minSqft       Float?
   maxSqft       Float?
   propertyTypes String? // JSON array
+  listingTypes  String? // JSON array
+  homeFeatures  String? // JSON array
+  keywords      String?
   yearBuiltMin  Int?
   yearBuiltMax  Int?
   lotSizeMin    Float?

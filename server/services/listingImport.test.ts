@@ -64,6 +64,20 @@ test('normalizes current HomeHarvest search fields', () => {
   assert.equal(property.sourceUrl, 'https://www.realtor.com/realestateandhomes-detail/example');
 });
 
+test('normalizes Zillow filter metadata for supported listing data', () => {
+  const property = normalizeProviderPayload({
+    days_on_market: 12,
+    is_foreclosure: true,
+    listing_types: 'By Owner',
+    features: { Pool: true, Waterfront: true, Garage: false },
+    has_fireplace: true,
+  });
+
+  assert.equal(property.daysOld, 12);
+  assert.deepEqual(property.listingTypes, ['By Owner', 'Foreclosures']);
+  assert.deepEqual(property.homeFeatures, ['Pool', 'Waterfront', 'Fireplace']);
+});
+
 test('drops non-finite numeric values returned by import providers', async () => {
   const result = await runProviderChain('https://www.realtor.com/realestateandhomes-detail/example', [{
     name: 'non-finite-provider',

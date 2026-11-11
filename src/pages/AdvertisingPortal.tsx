@@ -16,7 +16,7 @@ const AdvertisingPortal = ({ admin = false }: { admin?: boolean }) => {
   const [form, setForm] = useState(emptyCampaign);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const authorized = admin ? user?.role === 'admin' : user?.role === 'advertiser';
+  const authorized = admin ? user?.role === 'admin' : Boolean(user);
   const endpoint = admin ? '/admin/campaigns' : '/advertiser/campaigns';
   const { data: campaigns = [] } = useQuery<any[]>({ queryKey: ['campaigns', admin], queryFn: async () => (await api.get(endpoint)).data, enabled: authorized });
   const createCampaign = useMutation({
@@ -39,11 +39,22 @@ const AdvertisingPortal = ({ admin = false }: { admin?: boolean }) => {
   });
 
   if (!user) return <div className="p-10 text-center">Loading account…</div>;
-  if (!authorized) return <div className="p-10 text-center"><p>This area requires an {admin ? 'administrator' : 'advertiser'} account.</p><Button asChild className="mt-4"><Link to={admin ? '/login' : '/advertise/signup'}>{admin ? 'Sign in' : 'Create advertiser account'}</Link></Button></div>;
+  if (!authorized) return <div className="p-10 text-center"><p>This area requires an {admin ? 'administrator account' : 'active account'}.</p><Button asChild className="mt-4"><Link to="/login">Sign in</Link></Button></div>;
 
   return (
     <div className="editorial-shell min-h-screen">
-      <nav className="editorial-nav"><div className="editorial-container flex h-20 items-center justify-between"><Link to="/" className="font-serif text-3xl">Home Buyer Sync</Link><div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{user.name}</span><Button variant="outline" size="sm" onClick={logout}>Sign out</Button></div></div></nav>
+      <nav className="editorial-nav">
+        <div className="editorial-container flex h-20 items-center justify-between">
+          <Link to="/" className="font-serif text-3xl">Home Buyer Sync</Link>
+          <div className="flex items-center gap-3">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/">← Back to Workspace &amp; Searches</Link>
+            </Button>
+            <span className="text-xs text-muted-foreground">{user.name}</span>
+            <Button variant="outline" size="sm" onClick={logout}>Sign out</Button>
+          </div>
+        </div>
+      </nav>
       <main className="editorial-container space-y-8 py-10">
         <header><p className="eyebrow">{admin ? 'Campaign operations' : 'Advertising studio'}</p><h1 className="display-title mt-3">{admin ? 'Review campaigns' : 'Reach home buyers thoughtfully'}</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">{admin ? 'Confirm invoicing and approve only campaigns that are ready to appear.' : 'Create a campaign, submit it for review, and contact Home Buyer Sync to complete manual invoicing. Reporting updates as your ad runs.'}</p></header>
         {!admin && <Card><CardHeader><CardTitle>{editingId ? 'Edit campaign' : 'New campaign'}</CardTitle></CardHeader><CardContent><div className="grid gap-4 md:grid-cols-2">

@@ -8,6 +8,7 @@ export type ListingSearchInput = {
   minPrice?: number;
   maxPrice?: number;
   minBeds?: number;
+  maxBeds?: number;
   minBaths?: number;
   minSqft?: number;
   maxSqft?: number;
@@ -18,6 +19,10 @@ export type ListingSearchInput = {
   daysOld?: number;
   status?: 'Active' | 'Inactive';
   propertyType?: string;
+  propertyTypes?: string[];
+  listingTypes?: string[];
+  homeFeatures?: string[];
+  keywords?: string;
 };
 
 type Fetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -48,6 +53,7 @@ function matchesFilters(listing: PropertyData, input: ListingSearchInput): boole
   if (input.minPrice !== undefined && (listing.price === undefined || listing.price < input.minPrice)) return false;
   if (input.maxPrice !== undefined && (listing.price === undefined || listing.price > input.maxPrice)) return false;
   if (input.minBeds !== undefined && (listing.beds === undefined || listing.beds < input.minBeds)) return false;
+  if (input.maxBeds !== undefined && (listing.beds === undefined || listing.beds > input.maxBeds)) return false;
   if (input.minBaths !== undefined && (listing.baths === undefined || listing.baths < input.minBaths)) return false;
   if (input.minSqft !== undefined && (listing.sqft === undefined || listing.sqft < input.minSqft)) return false;
   if (input.maxSqft !== undefined && (listing.sqft === undefined || listing.sqft > input.maxSqft)) return false;
@@ -55,9 +61,51 @@ function matchesFilters(listing: PropertyData, input: ListingSearchInput): boole
   if (input.lotSizeMax !== undefined && (listing.lotSize === undefined || listing.lotSize > input.lotSizeMax)) return false;
   if (input.yearBuiltMin !== undefined && (listing.yearBuilt === undefined || listing.yearBuilt < input.yearBuiltMin)) return false;
   if (input.yearBuiltMax !== undefined && (listing.yearBuilt === undefined || listing.yearBuilt > input.yearBuiltMax)) return false;
-  const requestedType = normalizedType(input.propertyType);
-  if (requestedType && normalizedType(listing.propertyType) !== requestedType) return false;
+  if (input.daysOld !== undefined && listing.daysOld !== undefined && listing.daysOld > input.daysOld) return false;
+  const requestedTypes = input.propertyTypes?.length ? input.propertyTypes : input.propertyType ? [input.propertyType] : [];
+  if (requestedTypes.length && !requestedTypes.some(type => normalizedType(type) === normalizedType(listing.propertyType))) return false;
+  if (input.listingTypes?.length && listing.listingTypes?.length) {
+    const availableTypes = listing.listingTypes.map(normalizeListingType);
+    if (!input.listingTypes.some(type => availableTypes.includes(normalizeListingType(type)))) return false;
+  }
+  if (input.homeFeatures?.length && listing.homeFeatures?.length) {
+    const availableFeatures = listing.homeFeatures.map(normalizeHomeFeature);
+    if (!input.homeFeatures.every(feature => availableFeatures.includes(normalizeHomeFeature(feature)))) return false;
+  }
+  if (input.keywords?.trim() && listing.description && !listing.description.toLowerCase().includes(input.keywords.trim().toLowerCase())) return false;
   return true;
+}
+
+function normalizeFilterValue(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function normalizeListingType(value: string): string {
+  const normalized = normalizeFilterValue(value);
+  if (normalized.includes('owner')) return 'byowner';
+  if (normalized.includes('agent')) return 'byagent';
+  if (normalized.includes('foreclos')) return 'foreclosures';
+  if (normalized.includes('newconstruction')) return 'newconstruction';
+  if (normalized.includes('comingsoon')) return 'comingsoon';
+  if (normalized.includes('auction')) return 'auction';
+  if (normalized.includes('accepted') || normalized.includes('backupoffer') || normalized === 'pending') return 'acceptedoffer';
+  return normalized;
+}
+
+function normalizeHomeFeature(value: string): string {
+  const normalized = normalizeFilterValue(value);
+  if (normalized.includes('parking')) return 'parking';
+  if (normalized.includes('garage')) return 'garage';
+  if (normalized.includes('basement')) return 'basement';
+  if (normalized.includes('singlestory') || normalized.includes('onestory') || normalized.startsWith('1story')) return 'singlestory';
+  if (normalized.includes('pool')) return 'pool';
+  if (normalized.includes('waterfront') || normalized.includes('lakefront')) return 'waterfront';
+  if (normalized.includes('airconditioning') || normalized.includes('centralair') || normalized === 'ac' || normalized.includes('hasac')) return 'airconditioning';
+  if (normalized.includes('fireplace')) return 'fireplace';
+  if (normalized.includes('3d') || normalized.includes('virtualtour') || normalized.includes('videotour')) return '3dorvideotour';
+  if (normalized.includes('openhouse')) return 'openhouse';
+  if (normalized.includes('pricereduced') || normalized.includes('pricecut')) return 'pricereduced';
+  return normalized;
 }
 
 function deduplicate(listings: PropertyData[]): PropertyData[] {
@@ -95,8 +143,9 @@ export function buildRentCastSearchUrl(input: ListingSearchInput, endpoint = 'ht
   if (input.radius !== undefined && hasAddressOrCoordinates) {
     url.searchParams.set('radius', String(Math.min(input.radius, 100)));
   }
-  if (input.propertyType && RENTCAST_PROPERTY_TYPES.has(input.propertyType)) {
-    url.searchParams.set('propertyType', input.propertyType);
+  const requestedTypes = input.propertyTypes?.length ? input.propertyTypes : input.propertyType ? [input.propertyType] : [];
+  if (requestedTypes.length === 1 && RENTCAST_PROPERTY_TYPES.has(requestedTypes[0])) {
+    url.searchParams.set('propertyType', requestedTypes[0]);
   }
   if (input.yearBuiltMin !== undefined || input.yearBuiltMax !== undefined) {
     url.searchParams.set('yearBuilt', `${input.yearBuiltMin ?? ''}-${input.yearBuiltMax ?? ''}`);
@@ -131,6 +180,19 @@ async function searchHomeHarvestListings(input: ListingSearchInput, fetcher: Fet
   if (!baseUrl) throw new Error('Listing search service is not configured');
   const serviceUrl = new URL(process.env.HOMEHARVEST_SEARCH_PATH || '/search', baseUrl);
   if (!['http:', 'https:'].includes(serviceUrl.protocol)) throw new Error('Listing search service must use HTTP or HTTPS');
+  const requestedTypes = input.propertyTypes?.length ? input.propertyTypes : input.propertyType ? [input.propertyType] : [];
+  const homeHarvestTypes: Record<string, string> = {
+    'Single Family': 'single_family',
+    Condo: 'condo',
+    Townhouse: 'townhouse',
+    Manufactured: 'manufactured',
+    'Multi-Family': 'multi_family',
+    Apartment: 'apartment',
+    Land: 'land',
+  };
+  const propertyType = requestedTypes.length === 1
+    ? homeHarvestTypes[requestedTypes[0]] || requestedTypes[0]
+    : undefined;
   const response = await fetcher(serviceUrl, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -141,8 +203,17 @@ async function searchHomeHarvestListings(input: ListingSearchInput, fetcher: Fet
       min_price: input.minPrice,
       max_price: input.maxPrice,
       min_beds: input.minBeds,
+      max_beds: input.maxBeds,
       min_baths: input.minBaths,
-      property_type: input.propertyType,
+      min_sqft: input.minSqft,
+      max_sqft: input.maxSqft,
+      lot_size_min: input.lotSizeMin,
+      lot_size_max: input.lotSizeMax,
+      year_built_min: input.yearBuiltMin,
+      year_built_max: input.yearBuiltMax,
+      days_old: input.daysOld,
+      foreclosure: input.listingTypes?.includes('Foreclosures') ? true : undefined,
+      property_type: propertyType,
     }),
     signal: AbortSignal.timeout(Number(process.env.HOMEHARVEST_TIMEOUT_MS || 30_000)),
   });

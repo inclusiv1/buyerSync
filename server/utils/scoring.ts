@@ -20,12 +20,16 @@ const numericRequirements: NumericRequirement[] = [
   { key: 'minPrice', propertyKey: 'price', label: 'Minimum price', direction: 'min', unit: '$' },
   { key: 'maxPrice', propertyKey: 'price', label: 'Maximum price', direction: 'max', unit: '$' },
   { key: 'minBeds', propertyKey: 'beds', label: 'Bedrooms', direction: 'min' },
+  { key: 'maxBeds', propertyKey: 'beds', label: 'Bedrooms', direction: 'max' },
   { key: 'minBaths', propertyKey: 'baths', label: 'Bathrooms', direction: 'min' },
   { key: 'minSqft', propertyKey: 'sqft', label: 'Square footage', direction: 'min', unit: ' sq ft' },
+  { key: 'maxSqft', propertyKey: 'sqft', label: 'Square footage', direction: 'max', unit: ' sq ft' },
   { key: 'yearBuiltMin', propertyKey: 'yearBuilt', label: 'Year built', direction: 'min' },
   { key: 'yearBuiltMax', propertyKey: 'yearBuilt', label: 'Year built', direction: 'max' },
   { key: 'lotSizeMin', propertyKey: 'lotSize', label: 'Lot size', direction: 'min', unit: ' acres' },
+  { key: 'lotSizeMax', propertyKey: 'lotSize', label: 'Lot size', direction: 'max', unit: ' acres' },
   { key: 'hoaMax', propertyKey: 'hoa', label: 'Monthly HOA', direction: 'max', unit: '$' },
+  { key: 'daysOld', propertyKey: 'daysOld', label: 'Days on market', direction: 'max', unit: ' days' },
 ];
 
 const formatValue = (value: number, unit = '') => unit === '$' ? `$${value.toLocaleString()}` : `${value.toLocaleString()}${unit}`;

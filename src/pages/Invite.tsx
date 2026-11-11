@@ -11,8 +11,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 import AuthLayout from '@/components/auth/AuthLayout';
 
 const inviteSchema = z.object({
-  name: z.string().min(2),
-  password: z.string().min(6),
+  name: z.string().min(2, 'Enter your full name'),
+  phone: z.string().trim().optional(),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
 const Invite = () => {
@@ -22,16 +23,21 @@ const Invite = () => {
   const [inviteInfo, setInviteInfo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api.get(`/invites/${token}`)
-      .then(res => setInviteInfo(res.data))
-      .catch(() => setError('Invalid or expired invitation link.'));
-  }, [token]);
-
   const form = useForm<z.infer<typeof inviteSchema>>({
     resolver: zodResolver(inviteSchema),
-    defaultValues: { name: '', password: '' },
+    defaultValues: { name: '', phone: '', password: '' },
   });
+
+  useEffect(() => {
+    api.get(`/invites/${token}`)
+      .then(res => {
+        setInviteInfo(res.data);
+        if (res.data.invitedPhone) {
+          form.setValue('phone', res.data.invitedPhone);
+        }
+      })
+      .catch(() => setError('Invalid or expired invitation link.'));
+  }, [token, form]);
 
   const onSubmit = async (values: z.infer<typeof inviteSchema>) => {
     try {
@@ -60,7 +66,14 @@ const Invite = () => {
           <div className="mt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3 text-xs text-white/45">Invited email: <span className="text-white/70">{inviteInfo.invitedEmail}</span></div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3 text-xs text-white/45">
+                Invited email: <span className="text-white/70">{inviteInfo.invitedEmail}</span>
+                {inviteInfo.invitedPhone && (
+                  <span className="ml-3 border-l border-white/10 pl-3">
+                    Mobile: <span className="text-champagne">{inviteInfo.invitedPhone}</span>
+                  </span>
+                )}
+              </div>
               <FormField
                 control={form.control}
                 name="name"
@@ -70,6 +83,25 @@ const Invite = () => {
                     <FormControl>
                       <Input autoComplete="name" placeholder="Your full name" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }: any) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Mobile Phone</FormLabel>
+                      <span className="text-[11px] text-champagne/80 font-medium">iMessage & SMS</span>
+                    </div>
+                    <FormControl>
+                      <Input type="tel" autoComplete="tel" placeholder="(555) 000-0000" {...field} />
+                    </FormControl>
+                    <p className="text-[11px] text-white/45">
+                      Receive real-time listing alerts and query group criteria via SMS or iMessage.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

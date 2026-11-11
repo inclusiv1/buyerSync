@@ -29,6 +29,17 @@ export function parseSearchLocation(content: string): string | undefined {
   return zip?.[1];
 }
 
+function criteriaList(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
+  if (typeof value !== 'string') return undefined;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function deterministicFallback(
   content: string,
   executor: AssistantToolExecutor,
@@ -74,6 +85,10 @@ export async function deterministicFallback(
         limit: 50,
         ...(typeof savedCriteria.radius === 'number' && { radius: savedCriteria.radius }),
         ...(typeof savedCriteria.minPrice === 'number' && { minPrice: savedCriteria.minPrice }),
+        ...(typeof savedCriteria.maxPrice === 'number' && { maxPrice: savedCriteria.maxPrice }),
+        ...(typeof savedCriteria.minBeds === 'number' && { minBeds: savedCriteria.minBeds }),
+        ...(typeof savedCriteria.maxBeds === 'number' && { maxBeds: savedCriteria.maxBeds }),
+        ...(typeof savedCriteria.minBaths === 'number' && { minBaths: savedCriteria.minBaths }),
         ...(typeof savedCriteria.minSqft === 'number' && { minSqft: savedCriteria.minSqft }),
         ...(typeof savedCriteria.maxSqft === 'number' && { maxSqft: savedCriteria.maxSqft }),
         ...(typeof savedCriteria.lotSizeMin === 'number' && { lotSizeMin: savedCriteria.lotSizeMin }),
@@ -82,6 +97,10 @@ export async function deterministicFallback(
         ...(typeof savedCriteria.yearBuiltMax === 'number' && { yearBuiltMax: savedCriteria.yearBuiltMax }),
         ...(typeof savedCriteria.daysOld === 'number' && { daysOld: savedCriteria.daysOld }),
         ...(typeof savedCriteria.status === 'string' && { status: savedCriteria.status }),
+        ...(criteriaList(savedCriteria.propertyTypes)?.length && { propertyTypes: criteriaList(savedCriteria.propertyTypes) }),
+        ...(criteriaList(savedCriteria.listingTypes)?.length && { listingTypes: criteriaList(savedCriteria.listingTypes) }),
+        ...(criteriaList(savedCriteria.homeFeatures)?.length && { homeFeatures: criteriaList(savedCriteria.homeFeatures) }),
+        ...(typeof savedCriteria.keywords === 'string' && savedCriteria.keywords && { keywords: savedCriteria.keywords }),
         ...(patch.maxPrice !== undefined && { maxPrice: patch.maxPrice }),
         ...(patch.minBeds !== undefined && { minBeds: patch.minBeds }),
         ...(patch.minBaths !== undefined && { minBaths: patch.minBaths }),

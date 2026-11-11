@@ -2,7 +2,21 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { isUniqueSignupConflict, parseBuyerSignupInput, SignupInputError } from './signup';
 
-test('normalizes valid buyer signup details', () => {
+test('normalizes valid buyer signup details with phone', () => {
+  assert.deepEqual(parseBuyerSignupInput({
+    name: '  Jamie Buyer  ',
+    email: '  JAMIE@Example.COM ',
+    password: 'password123',
+    phone: '770-490-4583',
+  }), {
+    name: 'Jamie Buyer',
+    email: 'jamie@example.com',
+    password: 'password123',
+    phone: '+17704904583',
+  });
+});
+
+test('normalizes valid buyer signup details without phone', () => {
   assert.deepEqual(parseBuyerSignupInput({
     name: '  Jamie Buyer  ',
     email: '  JAMIE@Example.COM ',
@@ -11,6 +25,7 @@ test('normalizes valid buyer signup details', () => {
     name: 'Jamie Buyer',
     email: 'jamie@example.com',
     password: 'password123',
+    phone: null,
   });
 });
 

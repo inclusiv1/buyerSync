@@ -75,6 +75,37 @@ class ParseSearchTest(unittest.TestCase):
         })
         self.assertEqual(property_type, "single_family")
 
+    def test_maps_additional_zillow_criteria_to_homeharvest(self):
+        arguments, property_type = parse_search({
+            "location": "Marietta, GA",
+            "max_beds": 4,
+            "min_sqft": 1200,
+            "max_sqft": 2400,
+            "lot_size_min": 5000,
+            "lot_size_max": 12000,
+            "year_built_min": 1990,
+            "year_built_max": 2020,
+            "days_old": 30,
+            "foreclosure": True,
+            "property_type": "single_family",
+        })
+
+        self.assertEqual(arguments, {
+            "location": "Marietta, GA",
+            "listing_type": "for_sale",
+            "limit": 10,
+            "beds_max": 4,
+            "sqft_min": 1200,
+            "sqft_max": 2400,
+            "lot_size_min": 5000,
+            "lot_size_max": 12000,
+            "year_built_min": 1990,
+            "year_built_max": 2020,
+            "past_days": 30,
+            "foreclosure": True,
+        })
+        self.assertEqual(property_type, "single_family")
+
     def test_rejects_unknown_fields(self):
         with self.assertRaisesRegex(RequestError, "Unknown fields"):
             parse_search({"location": "30339", "groupId": "another-group"})

@@ -52,7 +52,7 @@ const Login = () => {
   const completeLogin = (data: { token: string; user: TestUser }) => {
     setToken(data.token);
     setUser(data.user);
-    navigate(data.user.role === 'advertiser' ? '/advertiser' : data.user.role === 'admin' ? '/admin/ads' : '/');
+    navigate(data.user.role === 'admin' ? '/admin/ads' : '/');
   };
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {

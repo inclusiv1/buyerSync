@@ -26,8 +26,11 @@ export const propertyInputSchema = z.object({
   baths: nullableNumber(z.coerce.number().nonnegative()),
   sqft: nullableNumber(z.coerce.number().nonnegative()),
   yearBuilt: nullableNumber(z.coerce.number().int().min(1000).max(3000)),
+  daysOld: nullableNumber(z.coerce.number().int().nonnegative()),
   lotSize: nullableNumber(z.coerce.number().nonnegative()),
   propertyType: z.string().trim().max(100).nullable().optional(),
+  listingTypes: z.array(z.string().trim().min(1).max(100)).max(50).nullable().optional(),
+  homeFeatures: z.array(z.string().trim().min(1).max(100)).max(50).nullable().optional(),
   hoa: nullableNumber(z.coerce.number().nonnegative()),
   mlsId: z.string().trim().max(100).nullable().optional(),
   photos: z.union([z.array(z.string().url()).max(50), z.string().max(20_000)]).nullable().optional(),
@@ -64,24 +67,41 @@ export function requireBuyer(membership: AuthorizedMembership): void {
 export async function getSearchProfile(db: Database, userId: string, groupId?: string) {
   const membership = await resolveAcceptedMembership(db, userId, groupId);
   const criteria = await db.searchCriteria.findUnique({ where: { groupId: membership.groupId } });
-  return { membership, criteria: criteria || {} };
+  return { membership, criteria: normalizeSearchCriteria(criteria || {}) };
+}
+
+function normalizeSearchCriteria<T extends object>(criteria: T) {
+  const normalized = { ...criteria } as Record<string, unknown>;
+  for (const field of ['propertyTypes', 'listingTypes', 'homeFeatures'] as const) {
+    const value = normalized[field];
+    if (typeof value === 'string') {
+      try {
+        normalized[field] = JSON.parse(value);
+      } catch {
+        normalized[field] = [];
+      }
+    }
+  }
+  return normalized;
 }
 
 export async function updateSearchProfile(db: Database, userId: string, patch: unknown, groupId?: string) {
   const membership = await resolveAcceptedMembership(db, userId, groupId);
   requireBuyer(membership);
   const parsed: SearchCriteriaPatch = searchCriteriaPatchSchema.parse(patch);
-  const { propertyTypes, ...values } = parsed;
+  const { propertyTypes, listingTypes, homeFeatures, ...values } = parsed;
   const data = {
     ...values,
     ...(propertyTypes !== undefined && { propertyTypes: propertyTypes === null ? null : JSON.stringify(propertyTypes) }),
+    ...(listingTypes !== undefined && { listingTypes: listingTypes === null ? null : JSON.stringify(listingTypes) }),
+    ...(homeFeatures !== undefined && { homeFeatures: homeFeatures === null ? null : JSON.stringify(homeFeatures) }),
   };
   const criteria = await db.searchCriteria.upsert({
     where: { groupId: membership.groupId },
     update: data,
     create: { ...data, groupId: membership.groupId },
   });
-  return { membership, criteria };
+  return { membership, criteria: normalizeSearchCriteria(criteria) };
 }
 
 function serializeList(value: unknown): string {
@@ -117,8 +137,11 @@ export async function createPropertyForGroup(db: Database, userId: string, input
       baths: data.baths ?? null,
       sqft: data.sqft ?? null,
       yearBuilt: data.yearBuilt ?? null,
+      daysOld: data.daysOld ?? null,
       lotSize: data.lotSize ?? null,
       propertyType: data.propertyType || null,
+      listingTypes: data.listingTypes ? JSON.stringify(data.listingTypes) : null,
+      homeFeatures: data.homeFeatures ? JSON.stringify(data.homeFeatures) : null,
       hoa: data.hoa ?? null,
       mlsId: data.mlsId || null,
       photos: data.photos ? serializeList(data.photos) : null,
