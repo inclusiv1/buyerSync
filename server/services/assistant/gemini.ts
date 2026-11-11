@@ -42,7 +42,7 @@ export class GeminiAssistantProvider implements AssistantProvider {
 
   constructor(
     apiKey: string,
-    private readonly model = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+    private readonly model = process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     private readonly timeoutMs = Number(process.env.ASSISTANT_TIMEOUT_MS || 20_000),
   ) {
     this.client = new GoogleGenAI({ apiKey });
